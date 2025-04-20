@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Create New Skill</h2>
+
+<form method="POST" action="{{ url_for('createSkill') }}">
+    <div>
+        <label for="skill_name">Skill Name</label>
+        <input type="text" id="skill_name" name="skill_name" placeholder="e.g., AliceLocation" required>
+        <small id="skill_status" style="font-size: 0.9rem; display: block; margin-top: 0.25rem;"></small>
+    </div>
+
+    <div>
+        <label for="default_value">Unavailable sensor fallback value</label>
+        <input type="number" id="default_value" name="default_value" value="9999" step="any">
+    </div>
+
+    <div>
+        <label for="mqtt_topic">MQTT Topic</label>
+        <input type="text" id="mqtt_topic" name="mqtt_topic" placeholder="Auto-generated or edit manually">
+    </div>
+
+    <button type="submit" id="submit_btn">Create Skill</button>
+</form>
+
+<script>
+    const skillInput = document.getElementById('skill_name');
+    const subInput = document.getElementById('mqtt_topic');
+    const status = document.getElementById('skill_status');
+    const submitBtn = document.getElementById('submit_btn');
+
+    let debounceTimer;
+    let slug;
+
+    skillInput.addEventListener('input', () => {
+        slug = skillInput.value
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, '-')    // Replace spaces and symbols with hyphens
+            .replace(/^-+|-+$/g, '');        // Trim leading/trailing hyphens
+
+        if (!subInput.dataset.manual) {
+            subInput.value = `ml2mqtt/${slug}`;
+        }
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            if (slug.length < 3) {
+                status.textContent = '';
+                submitBtn.disabled = true;
+                return;
+            }
+            fetch(`{{ url_for('checkSkill') }}?name=${encodeURIComponent(slug)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.exists) {
+                        status.textContent = "Skill name already exists";
+                        status.style.color = "#ff4d4d";
+                        submitBtn.disabled = true;
+                    } else {
+                        status.textContent = "Skill name is available";
+                        status.style.color = "#00cc66";
+                        submitBtn.disabled = false;
+                    }
+                })
+                .catch(() => {
+                    status.textContent = "Could not check skill name";
+                    status.style.color = "#ffa500";
+                    submitBtn.disabled = true;
+                });
+        }, 400);
+
+        // Mark inputs as "manual" if the user overrides the auto-generated values
+        [subInput].forEach(input => {
+            input.addEventListener('input', () => {
+                input.dataset.manual = true;
+            });
+        });
+    });
+
+    // Initially disable the button until valid input is confirmed
+    submitBtn.disabled = true;
+</script>
+
+{% endblock %}

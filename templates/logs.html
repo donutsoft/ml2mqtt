@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>System Logs</h2>
+<div id="logContainer">
+  <!-- Logs will be loaded here -->
+</div>
+
+<script>
+  async function loadLogs() {
+    try {
+      const response = await fetch("/logs/raw");
+      const html = await response.text();
+      document.getElementById("logContainer").innerHTML = html;
+    } catch (err) {
+      document.getElementById("logContainer").innerHTML = "<p style='color: red;'>Failed to load logs</p>";
+    }
+  }
+
+  // Initial load
+  loadLogs();
+
+  // Refresh every 5 seconds
+  setInterval(loadLogs, 5000);
+</script>
+
+{% endblock %}

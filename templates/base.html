@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/default.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title or "ml2mqtt" }}</title>
+</head>
+<body>
+
+<nav>
+    <div class="nav-title">
+        <a href="{{ url_for('home') }}" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+            <img src="{{ url_for('static', filename='images/ml2mqtt.png') }}" alt="ML2MQTT Logo" style="height: 96px;">
+        </a>
+      </div>
+    
+      <div class="nav-links">
+        <a href="{{ url_for('home') }}" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+        <a href="{{ url_for('createSkill') }}" class="{% if active_page == 'create_skill' %}active{% endif %}">Add Skill</a>
+        <a href="{{ url_for('logs') }}" class="{% if active_page == 'logs' %}active{% endif %}">Logs</a>
+      </div>
+</nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+
+</body>
+</html>
