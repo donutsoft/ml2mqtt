@@ -19,7 +19,7 @@
         <td style="padding: 0.75rem;">{{ model.mqtt_topic }}</td>
         <td style="padding: 0.75rem; text-align: center;">
           <div style="display: flex; justify-content: center; gap: 2rem;">
-            <a href="{{ url_for('editModel', modelId=model.id) }}" style="color: #00aaff;">Edit</a>
+            <a href="{{ url_for('editModel', modelName=model.name, section='settings') }}" style="color: #00aaff;">Edit</a>
             <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ model.name }}')" style="color: #ff4d4d;">Delete</a>
           </div>
         </td>

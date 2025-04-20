@@ -1,6 +1,6 @@
 from Config import Config
 from MqttClient import MqttClient
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, render_template, request, url_for, redirect, abort
 
 from SkillManager import SkillManager
 from io import StringIO
@@ -70,10 +70,6 @@ def deleteModel(modelName):
     skillManager.removeSkill(modelName)
     return redirect(url_for("home"))
 
-@app.route("/edit-model", methods=["GET", "POST"])
-def editModel():
-    pass
-
 @app.route("/logs")
 def logs():
     return render_template("logs.html", logs=logs, active_page="logs")
@@ -82,3 +78,27 @@ def logs():
 def logsRaw():
     logLines = logStream.getvalue().splitlines()
     return render_template("logs_raw.html", logs=logLines)
+
+
+@app.route("/edit-model/<string:modelName>/<section>")
+def editModel(modelName, section="settings"):
+    validSections = ["settings", "observations", "preprocessors", "postprocessors"]
+
+    if section not in validSections:
+        abort(404)
+
+    # TODO: Replace with your real model lookup logic
+    model = {
+        "name": modelName
+    }
+
+    sectionTemplate = f"edit_model/{section}.html"
+
+    return render_template(
+        "edit_model.html",
+        title=f"Edit Model: {model['name']}",
+        activePage=None,
+        activeSection=section,
+        model=model,
+        sectionTemplate=sectionTemplate
+    )

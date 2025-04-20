@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display: flex; gap: 2rem;">
+  <!-- Sidebar -->
+  <aside style="width: 200px;">
+    <nav style="display: flex; flex-direction: column; gap: 1rem;">
+      <a href="{{ url_for('editModel', modelName=model.name, section='settings') }}"
+         class="menuLink {% if activeSection == 'settings' %}active{% endif %}">Model Settings</a>
+      <a href="{{ url_for('editModel', modelName=model.name, section='observations') }}"
+         class="menuLink {% if activeSection == 'observations' %}active{% endif %}">Manage Observations</a>
+      <a href="{{ url_for('editModel', modelName=model.name, section='preprocessors') }}"
+         class="menuLink {% if activeSection == 'preprocessors' %}active{% endif %}">Preprocessors</a>
+      <a href="{{ url_for('editModel', modelName=model.name, section='postprocessors') }}"
+         class="menuLink {% if activeSection == 'postprocessors' %}active{% endif %}">Postprocessors</a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <section style="flex-grow: 1;">
+    {% include sectionTemplate %}
+  </section>
+</div>
+
+<style>
+  .menuLink {
+    color: #c0c8d6;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+    border-radius: 0 8px 8px 0;
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .menuLink:hover {
+    color: #00aaff;
+    background-color: #1a2734;
+  }
+
+  .menuLink.active {
+    border-left: 4px solid;
+    border-image: linear-gradient(to bottom, #00aaff, #007acc) 1;
+    color: #ffffff;
+    font-weight: 600;
+    border-left: 4px solid #00aaff;
+    background-color: #1f2d3a;
+  }
+  </style>
+
+{% endblock %}

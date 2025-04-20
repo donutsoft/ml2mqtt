@@ -15,7 +15,7 @@ class SkillManager:
             self._skills[skill.lower()] = SkillService(self._mqttClient, SkillStore(skill + ".db"))
         else:
             raise ValueError(f"Skill {skill} already exists.")
-        return self._skills[skill]
+        return self._skills[skill.lower()]
 
     def skillExists(self, skillName):
         return skillName.lower() in self.listSkills()
