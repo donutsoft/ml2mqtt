@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>My Skills</h2>
+<h2>My Models</h2>
 
-{% if skills %}
+{% if models %}
 <table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
     <thead>
       <tr style="background-color: #1f2d3a;">
-        <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">Skill Name</th>
+        <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">Model Name</th>
         <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">MQTT Topic</th>
         <th style="text-align: center; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for skill in skills %}
+      {% for model in models %}
       <tr style="border-bottom: 1px solid #2c3e50;">
-        <td style="padding: 0.75rem;">{{ skill.name }}</td>
-        <td style="padding: 0.75rem;">{{ skill.mqtt_topic }}</td>
+        <td style="padding: 0.75rem;">{{ model.name }}</td>
+        <td style="padding: 0.75rem;">{{ model.mqtt_topic }}</td>
         <td style="padding: 0.75rem; text-align: center;">
           <div style="display: flex; justify-content: center; gap: 2rem;">
-            <a href="{{ url_for('editSkill', skillId=skill.id) }}" style="color: #00aaff;">Edit</a>
-            <a href="#" onclick="confirmDelete('{{ skill.name }}', '{{ skill.name }}')" style="color: #ff4d4d;">Delete</a>
+            <a href="{{ url_for('editModel', modelId=model.id) }}" style="color: #00aaff;">Edit</a>
+            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ model.name }}')" style="color: #ff4d4d;">Delete</a>
           </div>
         </td>
       </tr>
@@ -33,13 +33,13 @@
   </form>
 
   <script>
-    function confirmDelete(skillId, skillName) {
-      const confirmMsg = `Are you sure you want to delete the skill "${skillName}"? This action cannot be undone.`;
+    function confirmDelete(modelId, modelName) {
+      const confirmMsg = `Are you sure you want to delete the model "${modelName}"? This action cannot be undone.`;
       if (confirm(confirmMsg)) {
         const form = document.getElementById('deleteForm');
         const input = document.getElementById('deleteSkillId');
-        input.value = skillName;
-        form.action = `/delete-skill/${skillName}`;
+        input.value = modelName;
+        form.action = `/delete-model/${modelName}`;
         form.submit();
       }
     }
@@ -47,7 +47,7 @@
 
 {% else %}
   <p style="margin-top: 2rem; font-size: 1.1rem; color: #c0c8d6;">
-    🐬 You haven't added any skills yet. <a href="{{ url_for('createSkill') }}" style="color: #00aaff;">Add one now</a>.
+    🐬 You haven't added any models yet. <a href="{{ url_for('createModel') }}" style="color: #00aaff;">Add one now</a>.
   </p>
 {% endif %}
 

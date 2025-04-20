@@ -2,7 +2,7 @@ import sqlite3
 import struct
 import time
 import logging
-
+import os
 class SkillStore:
     TYPE_INT = 0
     TYPE_FLOAT = 1

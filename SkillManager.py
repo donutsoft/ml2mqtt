@@ -12,7 +12,7 @@ class SkillManager:
 
     def addSkill(self, skill):
         if not self.skillExists(skill):
-            self._skills[skill] = SkillService(self._mqttClient, SkillStore(skill + ".db"))
+            self._skills[skill.lower()] = SkillService(self._mqttClient, SkillStore(skill + ".db"))
         else:
             raise ValueError(f"Skill {skill} already exists.")
         return self._skills[skill]
@@ -27,9 +27,9 @@ class SkillManager:
         return map(lambda x: self.getSkillName(x), os.listdir("skills/"))
 
     def removeSkill(self, skillName):
-        os.remove("skills/" + skillName + ".db")
         del self._skills[skillName.lower()]
-
+        os.remove("skills/" + skillName + ".db")
+        
     def getSkill(self, skillName):
         return self._skills[skillName.lower()]
     
