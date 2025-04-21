@@ -122,21 +122,25 @@ class SkillStore:
         self._sensorKeys.append({"name": sensorName, "type": sensorType, "default_value": unknownValue})
         self._sensorKeySet.add(sensorName)
 
-    def getSensorRecentValues(self, forPrediction: bool):
-        rows = self._cursor.execute("SELECT name, value FROM SensorRecentValues").fetchall()
-        sensorValues = {}
-        for row in rows:
-            name, value = row
-            if not forPrediction or name in self._sensorKeySet:
-                sensorValues[name] = value
-        return sensorValues
-    
-    def setSensorRecentValue(self, sensorName, value):
-        if value == "unknown" and sensorName not in self._sensorKeySet:
-            return
+    def sortEntityValues(self, entityMap, forTraining: bool):
+        sensorValues = []
+        remaining = set(entityMap.keys())
+        for i, sensorKey in enumerate(self._sensorKeys):
+            if sensorKey["name"] not in entityMap:
+                sensorValues.append(self._getDbValue(sensorKey["default_value"]))
+            else:
+                if entityMap[sensorKey["name"]] == "unknown":
+                    sensorValues.append(self._getDbValue(sensorKey["default_value"]))
+                else:
+                    sensorValues.append(entityMap[sensorKey["name"]])
+            remaining.remove(sensorKey["name"])
+        
+        if forTraining:
+            for entityKey in remaining:
+                self._addSensorType(entityKey, entityMap[entityKey])
+                sensorValues.append(self._getDbValue(entityMap[entityKey]))
 
-        self._cursor.execute("INSERT OR REPLACE INTO SensorRecentValues (name, value) VALUES (?, ?)", (sensorName, value))
-        self._db.commit()
+        return sensorValues
 
     def addObservation(self, label, sensors):
         for sensor in sensors:
