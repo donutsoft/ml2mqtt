@@ -20,7 +20,7 @@ class SkillStore:
 
 
     def _createTables(self):
-        self._cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name VARCHAR(100), type INTEGER, default_value BLOB)")
+        self._cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name VARCHAR(100) PRIMARY KEY, type INTEGER, default_value BLOB)")
         self._cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label VARCHAR(100), data BLOB)")
         self._cursor.execute("CREATE TABLE IF NOT EXISTS StringTable (name TEXT)")
         self._cursor.execute("CREATE TABLE IF NOT EXISTS Settings (name TEXT PRIMARY KEY, value)")
@@ -28,14 +28,17 @@ class SkillStore:
         self._db.commit()
 
     def _populateSensors(self):
-        self._cursor.execute("SELECT name, type, default_value FROM SensorKeys")
-        self._sensorKeys = list(map(lambda row: { "name": row[0], "type": row[1], "default_value": row[2] }, self._cursor.fetchall()))
+        self._sensorKeys = []
+        for row in self._cursor.execute("SELECT name, type, default_value FROM SensorKeys").fetchall():
+            print("Row: " + str(row))
+            self._sensorKeys.append({"name": row[0], "type": row[1], "default_value": struct.unpack(self._generateFormatType(row[1]), row[2])[0]})
+
+
         self._sensorKeySet = set(map(lambda x: x["name"], self._sensorKeys))
 
     def _populateStringTable(self):
-        self._cursor.execute("SELECT ROWID, name FROM StringTable")
         self._stringTable = {}
-        self._stringTable = dict(map(lambda row: (row[1], row[0]), self._cursor.fetchall()))
+        self._stringTable = dict(map(lambda row: (row[1], row[0]), self._cursor.execute("SELECT ROWID, name FROM StringTable")))
         self._reverseStringTable = dict(map(lambda row: (row[1], row[0]), self._stringTable.items()))
 
     def _getStringId(self, string):
@@ -119,13 +122,13 @@ class SkillStore:
         self._sensorKeys.append({"name": sensorName, "type": sensorType, "default_value": unknownValue})
         self._sensorKeySet.add(sensorName)
 
-    def getSensorRecentValues(self):
-        self._cursor.execute("SELECT name, value FROM SensorRecentValues")
-        rows = self._cursor.fetchall()
+    def getSensorRecentValues(self, forPrediction: bool):
+        rows = self._cursor.execute("SELECT name, value FROM SensorRecentValues").fetchall()
         sensorValues = {}
         for row in rows:
             name, value = row
-            sensorValues[name] = value
+            if not forPrediction or name in self._sensorKeySet:
+                sensorValues[name] = value
         return sensorValues
     
     def setSensorRecentValue(self, sensorName, value):
@@ -154,7 +157,7 @@ class SkillStore:
         self._db.commit()
 
     def getObservations(self):
-        self._cursor.execute("SELECT * FROM Observations")
+        self._cursor.execute("SELECT * FROM Observations ORDER BY time DESC")
         rows = self._cursor.fetchall()
         observations = []
         for row in rows:
@@ -168,8 +171,11 @@ class SkillStore:
                 "sensorValues": sensorValues
             }
 
+            print(f"Length: {len(self._sensorKeys)}")
             for i, sensorKey in enumerate(self._sensorKeys):
+                print(f"i: {i}, sensorKey: {sensorKey}")
                 if i < len(unpackedData):
+                    print(self._getValue(sensorKey, unpackedData[i])) 
                     sensorValues[sensorKey["name"]] = self._getValue(sensorKey, unpackedData[i])
                 else:
                     print("Value not found:" + str(sensorKey))
@@ -215,3 +221,11 @@ class SkillStore:
 
     def getName(self):
         return self._getSetting("name", None)
+    
+    def getLabels(self):
+        self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")
+        rows = self._cursor.fetchall()
+        labels = []
+        for row in rows:
+            labels.append(row[0])
+        return labels

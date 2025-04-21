@@ -1,3 +1,112 @@
 <h2>Manage Observations</h2>
-<h4 style="color: #7e8c9c; margin-top: -0.25rem; margin-bottom: 1.5rem;">Model: {{ model.name }}</h4>
-<p>List, add, or remove model features (observations).</p>
+<h4 class="subheader">Model: {{ model.name }}</h4>
+
+{% if model.observations %}
+  <table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
+    <thead>
+      <tr style="background-color: #1f2d3a;">
+        <th style="padding: 0.75rem;">Timestamp</th>
+
+        {% for entityId in model.observations[0].sensorValues %}
+        <th style="
+          padding: 0.5rem;
+          text-align: center;
+          font-size: 0.75rem;
+          white-space: normal;
+          word-break: break-word;
+          max-width: 100px;
+        ">{{ entityId }}</th>
+        {% endfor %}
+
+        <th style="padding: 0.75rem; min-width: 180px;">Label</th>
+        <th style="padding: 0.75rem; text-align: center;">Explicit Match</th>
+        <th style="padding: 0.75rem; text-align: center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for obs in model.observations %}
+      <tr id="observationRow-{{ obs.time }}" style="border-bottom: 1px solid #2c3e50;">
+        <td style="padding: 0.75rem;">{{ obs.display_time }}</td>
+
+        {% for entityId in obs.sensorValues %}
+        <td style="text-align: center; padding: 0.75rem;">
+          <input
+            type="text"
+            value="{{ obs.sensorValues[entityId] }}"
+            onblur="updateEntityValue('{{ model.name }}', '{{ obs.time }}', '{{ entityId }}', this.value)"
+            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px;"
+          >
+        </td>
+        {% endfor %}
+
+        <td style="padding: 0.75rem;">
+          <select
+            onchange="updateLabel('{{ model.name }}', '{{ obs.time }}', this.value)"
+            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px;"
+          >
+            {% for label in model.labels %}
+              <option value="{{ label }}" {% if obs.label == label %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+
+        <td style="text-align: center;">
+          <input
+            type="checkbox"
+            {% if obs.explicitMatch %}checked{% endif %}
+            onchange="toggleExplicitMatch('{{ model.name }}', '{{ obs.time }}', this.checked)">
+        </td>
+
+        <td style="text-align: center;">
+          <button onclick="deleteObservation('{{ model.name }}', '{{ obs.time }}')"
+                  style="background-color: transparent; border: none; color: #ff4d4d; cursor: pointer;">
+            Delete
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="margin-top: 2rem;">No observations found for this model.</p>
+{% endif %}
+
+<script>
+  async function toggleExplicitMatch(modelName, obsTime, isChecked) {
+    await fetch(`/api/model/${modelName}/observation/${obsTime}/explicit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ explicitMatch: isChecked })
+    });
+  }
+
+  async function updateLabel(modelName, obsTime, newLabel) {
+    await fetch(`/api/model/${modelName}/observation/${obsTime}/label`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: newLabel })
+    });
+  }
+
+  async function updateEntityValue(modelName, obsTime, entityId, value) {
+    await fetch(`/api/model/${modelName}/observation/${obsTime}/entity`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entityId, value })
+    });
+  }
+
+  async function deleteObservation(modelName, obsTime) {
+    if (!confirm("Delete this observation?")) return;
+
+    const res = await fetch(`/api/model/${modelName}/observation/${obsTime}/delete`, {
+      method: "POST"
+    });
+
+    if (res.ok) {
+      document.getElementById(`observationRow-${obsTime}`).remove();
+    } else {
+      alert("Failed to delete observation.");
+    }
+  }
+</script>

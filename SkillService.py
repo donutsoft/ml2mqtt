@@ -1,6 +1,5 @@
 from SkillStore import SkillStore
 from classifiers.RandomForest import RandomForest
-from MqttClient import MqttClient
 import logging
 import json
 
@@ -27,7 +26,7 @@ class SkillService:
         self._randomForest.populateDataframe(self._skillstore.getObservations())
 
     def addObservation(self, label):
-        self._skillstore.addObservation(label, self._skillstore.getSensorRecentValues())
+        self._skillstore.addObservation(label, self._skillstore.getSensorRecentValues(False))
         self._populateModel()
 
     def predictLabel(self, msg):
@@ -38,11 +37,10 @@ class SkillService:
 
         print(str(self._sensorsSeen) + "\n" +  str(self._skillstore.getSensorRecentValues().keys()) + "\n\n\n")
 
-        sensorRecentValues = self._skillstore.getSensorRecentValues()
+        sensorRecentValues = self._skillstore.getSensorRecentValues(True)
         if len(self._sensorsSeen) < len(sensorRecentValues.keys()):
             return
         
-        self.logger.info("Predicting label for: " + str(self._sensorsSeen))
         currentLabel = self._randomForest.predictLabel(sensorRecentValues)
         self._sensorsSeen.clear()
 
@@ -50,8 +48,6 @@ class SkillService:
             self._previousLabel = currentLabel
             self._mqttClient.publish(self._skillstore.getMqttTopic() + "/state", json.dumps({"state": currentLabel}))
             self.logger.info("Predicted label: %s", currentLabel)
-        else:
-            self.logger.info("No change in label: %s", currentLabel)
     
     def getMqttTopic(self):
         return self._skillstore.getMqttTopic()
@@ -67,3 +63,9 @@ class SkillService:
 
     def setName(self, skillName):
         self._skillstore.setName(skillName)
+
+    def getObservations(self):
+        return self._skillstore.getObservations()
+    
+    def getLabels(self):
+        return self._skillstore.getLabels()

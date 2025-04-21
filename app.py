@@ -8,6 +8,7 @@ from io import StringIO
 import json
 import logging
 import os
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
@@ -92,6 +93,15 @@ def editModel(modelName, section="settings"):
         "name": modelName
     }
 
+    if section == "observations":
+        model["observations"] = skillManager.getSkill(modelName).getObservations()
+        model["labels"] = skillManager.getSkill(modelName).getLabels()
+
+        for observation in model["observations"]:
+            observation["display_time"] = datetime.fromtimestamp(observation["time"]).strftime("%Y-%m-%d %H:%M:%S")
+    elif section == "settings":
+        model["params"] = {}
+
     sectionTemplate = f"edit_model/{section}.html"
 
     return render_template(
@@ -102,3 +112,36 @@ def editModel(modelName, section="settings"):
         model=model,
         sectionTemplate=sectionTemplate
     )
+
+@app.route("/edit-model/<string:modelName>/settings/update")
+def updateModelSettings(modelName):
+    #data = request.get_json()
+    #mqttTopic = data.get("mqtt_topic")
+    #defaultValue = data.get("default_value")
+
+    #model = skillManager.getSkill(modelName)
+    #model.setMqttTopic(mqttTopic)
+    #model.setDefaultValue("*", defaultValue)
+
+    return json.dumps({"success": True})
+
+@app.route("/edit-model/<string:modelName>/settings/autotune")
+def autoTuneModel(modelName):
+    return json.dumps({"success": True})
+
+@app.route("/edit-model/<string:modelName>/settings/test")
+def testModel(modelName):
+    return json.dumps({"success": True})
+
+@app.route("/api/model/<int:modelId>/observation/<int:observationId>/explicit", methods=["POST"])
+def updateExplicitMatch(modelId, observationId):
+    data = request.get_json()
+    isExplicit = data.get("explicitMatch", False)
+    # updateObservationExplicitMatch(modelId, observationId, isExplicit)
+    return json.dumps({"success": True})
+
+
+@app.route("/api/model/<int:modelId>/observation/<int:observationId>/delete", methods=["POST"])
+def apiDeleteObservation(modelId, observationId):
+    ##deleteObservationById(modelId, observationId)
+    return json.dumps({"success": True})

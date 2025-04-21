@@ -11,6 +11,7 @@ import logging
 class RandomForest:
     def __init__(self):
         self.logger = logging.getLogger("ml2mqtt")
+        self._rf_model = None
         self.labelEncoder = LabelEncoder()
 
     def populateDataframe(self, observations):
@@ -25,14 +26,15 @@ class RandomForest:
         y = self.labelEncoder.fit_transform(labels)
         try:
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-            self._rf_model = RandomForestClassifier(n_estimators=50)
-            self._rf_model.fit(X_train, y_train)
+            rf_model = RandomForestClassifier(n_estimators=50)
+            rf_model.fit(X_train, y_train)
+            self._rf_model = rf_model
         except ValueError:
             self.logger.info("Not enough data to train the model")
             self._modelTrained = False
 
     def predictLabel(self, sensorValues):
-        if not self._rf_model:
+        if self._rf_model == None:
             return None
 
         X = pd.DataFrame([sensorValues])

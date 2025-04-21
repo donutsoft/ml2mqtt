@@ -127,3 +127,47 @@ form {
   .nav-title img {
     vertical-align: middle;
   }
+
+  .tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+  }
+  
+  .tooltip:hover .tooltipText {
+    visibility: visible;
+    opacity: 1;
+  }
+  
+  .tooltipText {
+    visibility: hidden;
+    width: 220px;
+    background-color: #2a3b4c;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;  /* Show above the icon */
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    font-size: 0.85rem;
+    line-height: 1.2rem;
+  }
+
+  .tooltipIcon {
+    display: inline-block;
+    background-color: #007acc;
+    color: white;
+    border-radius: 50%;
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.75rem;
+    text-align: center;
+    line-height: 1rem;
+    margin-left: 4px;
+    cursor: help;
+  }
