@@ -2,14 +2,15 @@ import sqlite3
 import struct
 import time
 import logging
-import os
+import threading
 class SkillStore:
     TYPE_INT = 0
     TYPE_FLOAT = 1
     TYPE_STRING = 2
 
 
-    def __init__(self, skill, unknownValue=9999):
+    def __init__(self, skill, unknownValue=9999.0):
+        self.lock = threading.Lock()
         self._db = sqlite3.connect(f"skills/{skill}", check_same_thread=False)
         self._cursor = self._db.cursor()
         self._createTables()
@@ -17,15 +18,16 @@ class SkillStore:
         self._populateStringTable()
         self._unknownValue = self._getSetting("unknown_value", unknownValue)
         self.logger = logging.getLogger("ml2mqtt")
-
+        self.logger.log(logging.INFO, "SkillStore initialized with skill: %s", skill)
 
     def _createTables(self):
-        self._cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name VARCHAR(100) PRIMARY KEY, type INTEGER, default_value BLOB)")
-        self._cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label VARCHAR(100), data BLOB)")
-        self._cursor.execute("CREATE TABLE IF NOT EXISTS StringTable (name TEXT)")
-        self._cursor.execute("CREATE TABLE IF NOT EXISTS Settings (name TEXT PRIMARY KEY, value)")
-        self._cursor.execute("CREATE TABLE IF NOT EXISTS SensorRecentValues (name TEXT PRIMARY KEY, value)")
-        self._db.commit()
+        with self.lock, self._db:
+            cursor = self._db.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name VARCHAR(100) PRIMARY KEY, type INTEGER, default_value BLOB)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label VARCHAR(100), data BLOB)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS StringTable (name TEXT)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Settings (name TEXT PRIMARY KEY, value)")
+            self._db.commit()
 
     def _populateSensors(self):
         self._sensorKeys = []
@@ -42,13 +44,13 @@ class SkillStore:
         self._reverseStringTable = dict(map(lambda row: (row[1], row[0]), self._stringTable.items()))
 
     def _getStringId(self, string):
-        if string in self._stringTable:
-            return self._stringTable[string]
-        else:
-            self._cursor.execute("INSERT INTO StringTable (name) VALUES (?)", (string,))
-            self._db.commit()
+        if not string in self._stringTable:
+            with self.lock, self._db:
+                cursor = self._db.cursor()
+                cursor.execute("INSERT INTO StringTable (name) VALUES (?)", (string,))
+                self._db.commit()
             self._populateStringTable()
-            return self._stringTable[string]
+        return self._stringTable[string]
 
     def _getType(self, variable):
         self.logger.debug("Get type called for: " + str(variable))
@@ -60,7 +62,7 @@ class SkillStore:
             return SkillStore.TYPE_FLOAT
         elif isinstance(variable, str):
             try:
-                num = float(variable)
+                float(variable)
                 if '.' in variable:
                     return SkillStore.TYPE_FLOAT
                 else:
@@ -71,20 +73,15 @@ class SkillStore:
             raise ValueError("Unsupported type for: " + str(variable))
         
     def _getDbValue(self, variable):
-        if self._getType(variable) == SkillStore.TYPE_STRING:
+        type = self._getType(variable)
+        if type == SkillStore.TYPE_STRING:
             return self._getStringId(variable)
+        elif type == SkillStore.TYPE_INT:
+            return int(variable)
+        elif type == SkillStore.TYPE_FLOAT:
+            return float(variable)
         else:
-            if isinstance(variable, str):
-                try:
-                    num = float(variable)
-                    if '.' in variable:
-                        return num
-                    else:
-                        return int(variable)
-                except:
-                    raise ValueError("Unsupported type for: " + str(variable))
-            else:
-                return variable
+            raise ValueError("Unsupported type for: " + str(variable))
         
     def _getValue(self, sensorKey, value):
         if sensorKey["type"] == SkillStore.TYPE_STRING:
@@ -113,14 +110,20 @@ class SkillStore:
         return formatString
            
     def _addSensorType(self, sensorName, value):
+        print("Adding sensor type: " + str(sensorName) + " with value: " + str(value))
         sensorType = self._getType(value)
         unknownValue = self._getDbValue(str(self._unknownValue) if sensorType == SkillStore.TYPE_STRING else self._unknownValue)
 
         default_value = struct.pack(self._generateFormatType(sensorType), unknownValue)
-        self._cursor.execute("INSERT INTO SensorKeys (name, type, default_value) VALUES (?, ?, ?)", (sensorName, sensorType, default_value,))
-        self._db.commit()
-        self._sensorKeys.append({"name": sensorName, "type": sensorType, "default_value": unknownValue})
-        self._sensorKeySet.add(sensorName)
+        with self.lock, self._db:
+            try:
+                cursor = self._db.cursor()
+                cursor.execute("INSERT INTO SensorKeys (name, type, default_value) VALUES (?, ?, ?)", (sensorName, sensorType, default_value,))
+                self._db.commit()
+                self._sensorKeys.append({"name": sensorName, "type": sensorType, "default_value": unknownValue})
+                self._sensorKeySet.add(sensorName)
+            except sqlite3.IntegrityError:
+                pass
 
     def sortEntityValues(self, entityMap, forTraining: bool):
         sensorValues = []
@@ -143,22 +146,26 @@ class SkillStore:
         return sensorValues
 
     def addObservation(self, label, sensors):
+        print(sensors)
         for sensor in sensors:
             if sensor not in self._sensorKeySet:
                 self._addSensorType(sensor, sensors[sensor])
 
         formatString = self._generateFormatString()
-        values = []        
+        values = []
         for sensor in self._sensorKeys:
             if sensor["name"] in sensors:
                 values.append(self._getDbValue(sensors[sensor["name"]]))
             else:
                 values.append(self._getDbValue(sensor["default_value"]))
-
+        print("Values: " + str(values))
+        print("FormatString: " + formatString)
         packedValues = struct.pack(formatString, *values)
 
-        self._cursor.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time.time(), label, packedValues))
-        self._db.commit()
+        with self.lock, self._db:
+            cursor = self._db.cursor()
+            cursor.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time.time(), label, packedValues))
+            self._db.commit()
 
     def getObservations(self):
         self._cursor.execute("SELECT * FROM Observations ORDER BY time DESC")
@@ -187,6 +194,7 @@ class SkillStore:
 
             observations.append(observation)
         return observations
+
     
     def setDefaultValue(self, sensorName, value):
         if sensorName == "*":
@@ -199,8 +207,11 @@ class SkillStore:
         if sensorType != self._sensorKeys[sensorName]["type"]:
             raise ValueError("Type mismatch")
         default_value = struct.pack(self._generateFormatType(sensorType), self._getDbValue(value))
-        self._cursor.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (default_value, sensorName))
-        self._db.commit()
+        with self.lock, self._db:
+            cursor = self._db.cursor()
+            cursor.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (default_value, sensorName))
+            self._db.commit()
+
 
     def _getSetting(self, name, default_value):
         self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,)) 
@@ -211,8 +222,10 @@ class SkillStore:
             return result[0]
     
     def _saveSetting(self, name, value):
-        self._cursor.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))
-        self._db.commit()
+        with self.lock, self._db:
+            cursor = self._db.cursor()
+            cursor.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))
+            self._db.commit()
 
     def setMqttTopic(self, mqttTopic):
         self._saveSetting("mqtt_topic", mqttTopic)
@@ -233,3 +246,10 @@ class SkillStore:
         for row in rows:
             labels.append(row[0])
         return labels
+    
+    def close(self):
+        try:
+            with self.lock, self._db:
+                self._db.close()
+        except sqlite3.ProgrammingError:
+            pass

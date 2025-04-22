@@ -27,6 +27,7 @@ class SkillManager:
         return map(lambda x: self.getSkillName(x), os.listdir("skills/"))
 
     def removeSkill(self, skillName):
+        self._skills[skillName.lower()].dispose()
         del self._skills[skillName.lower()]
         os.remove("skills/" + skillName + ".db")
         

@@ -14,6 +14,7 @@ class SkillService:
 
     def dispose(self):
         self._mqttClient.unsubscribe(self._skillstore.getMqttTopic() + "/set", self.predictLabel)
+        self._skillstore.close()
     
     def subscribeToMqttTopics(self):
         self.logger.info("Subscribing to MQTT topics")
@@ -34,7 +35,7 @@ class SkillService:
         
         entityValues = self._skillstore.sortEntityValues(entityMap, not assigned_label == "Disabled")
         if assigned_label != "Disabled":
-            self._randomForest.addObservation(assigned_label, entityValues)
+            self._skillstore.addObservation(assigned_label, entityMap)
 
         currentLabel = self._randomForest.predictLabel(entityValues)
         
