@@ -179,14 +179,10 @@ class SkillStore:
                 "sensorValues": sensorValues
             }
 
-            print(f"Length: {len(self._sensorKeys)}")
             for i, sensorKey in enumerate(self._sensorKeys):
-                print(f"i: {i}, sensorKey: {sensorKey}")
                 if i < len(unpackedData):
-                    print(self._getValue(sensorKey, unpackedData[i])) 
                     sensorValues[sensorKey["name"]] = self._getValue(sensorKey, unpackedData[i])
                 else:
-                    print("Value not found:" + str(sensorKey))
                     sensorValues[sensorKey["name"]] = self._getValue(sensorKey, sensorKey["default_value"])
 
             observations.append(observation)

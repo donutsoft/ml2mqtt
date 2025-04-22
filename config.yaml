@@ -1,6 +1,6 @@
 name: "ml2mqtt"
 description: "Machine learning for MQTT"
-version: "0.1"
+version: "1.0.0"
 slug: "ml2mqtt"
 init: false
 arch:
@@ -9,17 +9,5 @@ arch:
   - armhf
   - armv7
   - i386
-startup: services
 ports:
-  8002/tcp: 8000
-
-options:
-  mqtt-server: "192.168.1.3"
-  mqtt-port: 1883
-  mqtt-username: "mqtt"
-  mqtt-password: "mqtt"
-schema:
-  mqtt-server: string
-  mqtt-port: int
-  mqtt-username: string
-  mqtt-password: string
+  5000/tcp: 5000
