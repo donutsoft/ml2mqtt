@@ -1,9 +1,10 @@
-FROM python:3.9-slim
+FROM alpine:3.19
 
-WORKDIR /
+WORKDIR /app
 
-COPY . /
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-CMD ["python3", "-m", "flask", "run"]
+RUN apk add py3-scikit-learn py3-flask py3-paho-mqtt
+    
+# Copy your actual app
+COPY . .
+    
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0"]
