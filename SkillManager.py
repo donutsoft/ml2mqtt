@@ -1,4 +1,4 @@
-import os
+import glob
 from SkillService import SkillService
 from SkillStore import SkillStore
 
@@ -6,9 +6,12 @@ class SkillManager:
     def __init__(self, mqttClient):
         self._skills = {}
         self._mqttClient = mqttClient
-        for skillFile in os.listdir("skills/"):
-            self._skills[self.getSkillName(skillFile)] = SkillService(self._mqttClient, SkillStore(skillFile))
-            self._skills[self.getSkillName(skillFile)].subscribeToMqttTopics()
+        try:
+            for skillFile in glob.glob("skills/*.db"):
+                self._skills[self.getSkillName(skillFile)] = SkillService(self._mqttClient, SkillStore(skillFile))
+                self._skills[self.getSkillName(skillFile)].subscribeToMqttTopics()
+        except FileNotFoundError:
+            pass
 
     def addSkill(self, skill):
         if not self.skillExists(skill):

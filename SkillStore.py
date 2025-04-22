@@ -11,7 +11,9 @@ class SkillStore:
 
     def __init__(self, skill, unknownValue=9999.0):
         self.lock = threading.Lock()
-        self._db = sqlite3.connect(f"skills/{skill}", check_same_thread=False)
+        self._db = sqlite3.connect(skill, check_same_thread=False)
+        self._db.execute("PRAGMA journal_mode=WAL")
+
         self._cursor = self._db.cursor()
         self._createTables()
         self._populateSensors()
@@ -132,7 +134,7 @@ class SkillStore:
             if sensorKey["name"] not in entityMap:
                 sensorValues.append(self._getDbValue(sensorKey["default_value"]))
             else:
-                if entityMap[sensorKey["name"]] == "unknown":
+                if entityMap[sensorKey["name"]] == "unknown" or entityMap[sensorKey["name"]] == "unavailable":
                     sensorValues.append(self._getDbValue(sensorKey["default_value"]))
                 else:
                     sensorValues.append(entityMap[sensorKey["name"]])
@@ -146,7 +148,6 @@ class SkillStore:
         return sensorValues
 
     def addObservation(self, label, sensors):
-        print(sensors)
         for sensor in sensors:
             if sensor not in self._sensorKeySet:
                 self._addSensorType(sensor, sensors[sensor])
@@ -158,8 +159,6 @@ class SkillStore:
                 values.append(self._getDbValue(sensors[sensor["name"]]))
             else:
                 values.append(self._getDbValue(sensor["default_value"]))
-        print("Values: " + str(values))
-        print("FormatString: " + formatString)
         packedValues = struct.pack(formatString, *values)
 
         with self.lock, self._db:
@@ -169,10 +168,8 @@ class SkillStore:
 
     def getObservations(self):
         self._cursor.execute("SELECT * FROM Observations ORDER BY time DESC")
-        rows = self._cursor.fetchall()
         observations = []
-        for row in rows:
-            time, label, data = row
+        for time, label, data in self._cursor.fetchall():
             formatString = self._generateFormatString(len(data))
             unpackedData = struct.unpack(formatString, data)
             sensorValues = {}
@@ -194,7 +191,6 @@ class SkillStore:
 
             observations.append(observation)
         return observations
-
     
     def setDefaultValue(self, sensorName, value):
         if sensorName == "*":
@@ -212,20 +208,15 @@ class SkillStore:
             cursor.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (default_value, sensorName))
             self._db.commit()
 
-
     def _getSetting(self, name, default_value):
         self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,)) 
-        result = self._cursor.fetchone()
-        if result is None:
-            return default_value
-        else:
-            return result[0]
+        row = self._cursor.fetchone()
+        return row[0] if row else default_value
     
     def _saveSetting(self, name, value):
         with self.lock, self._db:
             cursor = self._db.cursor()
             cursor.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))
-            self._db.commit()
 
     def setMqttTopic(self, mqttTopic):
         self._saveSetting("mqtt_topic", mqttTopic)
@@ -240,16 +231,11 @@ class SkillStore:
         return self._getSetting("name", None)
     
     def getLabels(self):
-        self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")
-        rows = self._cursor.fetchall()
-        labels = []
-        for row in rows:
-            labels.append(row[0])
-        return labels
+        return [row[0] for row in self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")]
     
     def close(self):
         try:
-            with self.lock, self._db:
+            with self.lock:
                 self._db.close()
         except sqlite3.ProgrammingError:
             pass
