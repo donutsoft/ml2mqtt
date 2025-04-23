@@ -1,4 +1,8 @@
 __pycache__/
 venv/
 skills/
-
+.DS_Store
+*.pyc
+*.pyo
+*.pyd
+*.db

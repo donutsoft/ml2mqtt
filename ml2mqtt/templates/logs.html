@@ -9,7 +9,7 @@
 <script>
   async function loadLogs() {
     try {
-      const response = await fetch('{{url_for("logs_raw")}}');
+      const response = await fetch('{{url_for("logsRaw")}}');
       const html = await response.text();
       document.getElementById("logContainer").innerHTML = html;
     } catch (err) {
