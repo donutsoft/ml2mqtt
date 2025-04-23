@@ -1,0 +1,3 @@
+[[tool.mypy.overrides]]
+module = ["paho.*", "pandas.*", "numpy.*", "sklearn.*"]
+ignore_missing_imports = true

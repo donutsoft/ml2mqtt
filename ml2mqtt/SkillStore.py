@@ -5,7 +5,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 
 @dataclass
@@ -65,7 +65,7 @@ class SkillStore:
         for name, type_, default_blob in self._cursor.execute("SELECT name, type, default_value FROM SensorKeys"):
             default_value = struct.unpack(self.TYPE_FORMATS[type_], default_blob)[0]
             self._sensorKeys.append(SensorKey(name, type_, default_value))
-        self._sensorKeySet: set[str] = set(sk.name for sk in self._sensorKeys)
+        self._sensorKeySet: Set[str] = set(sk.name for sk in self._sensorKeys)
 
     def _populateStringTable(self) -> None:
         self._stringTable: Dict[str, int] = dict((row[1], row[0]) for row in self._cursor.execute("SELECT ROWID, name FROM StringTable"))
