@@ -1,4 +1,5 @@
 import glob
+import os
 from SkillService import SkillService
 from SkillStore import SkillStore
 
@@ -24,7 +25,7 @@ class SkillManager:
         return skillName.lower() in self.listSkills()
     
     def getSkillName(self, skillPath):
-        return skillPath[:-3].lower()
+        return os.path.basename(skillPath)[:-3].lower()
     
     def listSkills(self):
         return map(lambda x: self.getSkillName(x), os.listdir("skills/"))

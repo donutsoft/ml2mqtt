@@ -1,6 +1,6 @@
 name: "ml2mqtt"
 description: "Machine learning for MQTT"
-version: "1.0.0"
+version: "1.1.2"
 slug: "ml2mqtt"
 init: false
 arch:
@@ -9,5 +9,7 @@ arch:
   - armhf
   - armv7
   - i386
-ports:
-  5000/tcp: 5000
+ingress: true
+ingress_port: 5000
+panel_icon: "mdi:web"
+panel_title: "ml2mqtt"

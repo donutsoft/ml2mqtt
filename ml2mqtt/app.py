@@ -22,7 +22,19 @@ logger.addHandler(streamHandler)
 
 os.mkdir("skills") if not os.path.exists("skills") else None
 
-app = Flask(__name__)
+class IngressMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        ingress_path = environ.get("HTTP_X_INGRESS_PATH")
+        if ingress_path:
+            environ["SCRIPT_NAME"] = ingress_path
+        return self.app(environ, start_response)
+
+app = Flask(__name__, static_url_path='')
+app.wsgi_app = IngressMiddleware(app.wsgi_app)
+
 config = Config()
 mqttClient = MqttClient(config.getValue("mqtt"))
 skillManager = SkillManager(mqttClient)
