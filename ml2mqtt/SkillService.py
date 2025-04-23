@@ -67,6 +67,7 @@ class SkillService:
         if label != DISABLED_LABEL:
             self.logger.info("Adding training observation for label: %s", label)
             self._skillstore.addObservation(label, entityMap)
+            self._populateModel()
 
         prediction = self._randomForest.predictLabel(entityValues)
 
@@ -77,13 +78,13 @@ class SkillService:
             self.logger.info("Predicted label: %s", prediction)
 
     def getMqttTopic(self) -> str:
-        return self._skillstore.getMqttTopic()
+        return self._skillstore.getMqttTopic() or ""
 
     def setMqttTopic(self, mqttTopic: str) -> None:
         self._skillstore.setMqttTopic(mqttTopic)
 
     def getName(self) -> str:
-        return self._skillstore.getName()
+        return self._skillstore.getName() or ""
 
     def setDefaultValue(self, sensorName: str, defaultValue: Any) -> None:
         self._skillstore.setDefaultValue(sensorName, defaultValue)

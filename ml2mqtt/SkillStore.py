@@ -128,20 +128,21 @@ class SkillStore:
             except sqlite3.IntegrityError:
                 pass
 
-    def sortEntityValues(self, entityMap: Dict[str, Any], forTraining: bool) -> List[Any]:
-        values: List[Any] = []
+    def sortEntityValues(self, entityMap: Dict[str, Any], forTraining: bool) -> Dict[str, Any]:
+        values: Dict[str, Any] = {}
         remaining = set(entityMap.keys())
+        # Filter entity values based on known sensor keys
         for sensor in self._sensorKeys:
             val = entityMap.get(sensor.name, sensor.default_value)
             if val in ("unknown", "unavailable"):
                 val = sensor.default_value
-            values.append(self._getDbValue(val))
+            values[sensor.name] = self._getDbValue(val)
             remaining.discard(sensor.name)
 
         if forTraining:
             for key in remaining:
                 self._addSensorType(key, entityMap[key])
-                values.append(self._getDbValue(entityMap[key]))
+                values[sensor.name] = self._getDbValue(entityMap[key])
 
         return values
 

@@ -7,7 +7,8 @@ from io import StringIO
 import json
 import logging
 import os
-from typing import Callable, Optional, Any
+from typing import Callable, Any, cast, Dict, Protocol, TypedDict, List
+from SkillStore import SkillObservation
 
 logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
@@ -21,11 +22,14 @@ logger.addHandler(streamHandler)
 
 os.makedirs("skills", exist_ok=True)
 
+class WSGIApp(Protocol):
+    def __call__(self, environ: Dict[str, Any], start_response: Callable) -> Any: ...
+
 class IngressMiddleware:
-    def __init__(self, app: Callable) -> None:
+    def __init__(self, app: WSGIApp) -> None:
         self.app = app
 
-    def __call__(self, environ: dict[str, Any], start_response: Callable) -> Any:
+    def __call__(self, environ: Dict[str, Any], start_response: Callable) -> Any:
         ingress_path = environ.get("HTTP_X_INGRESS_PATH")
         if ingress_path:
             environ["SCRIPT_NAME"] = ingress_path
@@ -67,6 +71,11 @@ def createModel() -> Response:
         defaultValue = request.form.get("default_value")
         mqttTopic = request.form.get("mqtt_topic")
 
+        if modelName is None:
+            abort(400, "Missing model name")
+        if mqttTopic is None:
+            abort(400, "Missing MQTT topic")
+
         newModel = skillManager.addSkill(modelName)
         newModel.setMqttTopic(mqttTopic)
         newModel.setDefaultValue("*", defaultValue)
@@ -98,7 +107,12 @@ def editModel(modelName: str, section: str = "settings") -> str:
     if section not in validSections:
         abort(404)
 
-    model = {"name": modelName}
+    class ViewModel(TypedDict):
+        name: str
+        params: Dict[str, Any]
+        observations: List[SkillObservation]
+        labels: List[str]
+    model: ViewModel = {"name": modelName, "params": {}, "observations": [], "labels": []}
 
     if section == "observations":
         model["observations"] = skillManager.getSkill(modelName).getObservations()
@@ -132,6 +146,9 @@ def testModel(modelName: str) -> str:
 @app.route("/api/model/<int:modelId>/observation/<int:observationId>/explicit", methods=["POST"])
 def updateExplicitMatch(modelId: int, observationId: int) -> str:
     data = request.get_json()
+    if data is None:
+        abort(400, "Missing or invalid JSON payload")
+
     isExplicit = data.get("explicitMatch", False)
     return json.dumps({"success": True})
 
