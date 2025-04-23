@@ -8,7 +8,6 @@ from io import StringIO
 import json
 import logging
 import os
-from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
@@ -108,9 +107,6 @@ def editModel(modelName, section="settings"):
     if section == "observations":
         model["observations"] = skillManager.getSkill(modelName).getObservations()
         model["labels"] = skillManager.getSkill(modelName).getLabels()
-
-        for observation in model["observations"]:
-            observation["display_time"] = datetime.fromtimestamp(observation["time"]).strftime("%Y-%m-%d %H:%M:%S")
     elif section == "settings":
         model["params"] = {}
 

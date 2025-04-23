@@ -3,233 +3,217 @@ import struct
 import time
 import logging
 import threading
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
+
+@dataclass
+class SensorKey:
+    name: str
+    type: int
+    default_value: Any
+
+
+@dataclass
+class SkillObservation:
+    time: float
+    label: str
+    sensorValues: Dict[str, Any]
+    display_time: str = field(init=False)
+
+    def __post_init__(self):
+        self.display_time = datetime.fromtimestamp(self.time).isoformat()
+
 class SkillStore:
     TYPE_INT = 0
     TYPE_FLOAT = 1
     TYPE_STRING = 2
 
+    TYPE_FORMATS = {
+        TYPE_INT: "i",
+        TYPE_FLOAT: "f",
+        TYPE_STRING: "i",  # stored as int reference to string table
+    }
 
-    def __init__(self, skill, unknownValue=9999.0):
+    def __init__(self, skill: str, unknownValue: float = 9999.0):
         self.lock = threading.Lock()
         self._db = sqlite3.connect(skill, check_same_thread=False)
         self._db.execute("PRAGMA journal_mode=WAL")
-
         self._cursor = self._db.cursor()
+        self._unknownValue: Union[str, float] = unknownValue
+
         self._createTables()
         self._populateSensors()
         self._populateStringTable()
-        self._unknownValue = self._getSetting("unknown_value", unknownValue)
-        self.logger = logging.getLogger("ml2mqtt")
-        self.logger.log(logging.INFO, "SkillStore initialized with skill: %s", skill)
 
-    def _createTables(self):
+        self._unknownValue = self._getSetting("unknown_value", self._unknownValue)
+        self.logger = logging.getLogger("ml2mqtt")
+        self.logger.info("SkillStore initialized with skill: %s", skill)
+
+    def _createTables(self) -> None:
         with self.lock, self._db:
             cursor = self._db.cursor()
-            cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name VARCHAR(100) PRIMARY KEY, type INTEGER, default_value BLOB)")
-            cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label VARCHAR(100), data BLOB)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name TEXT PRIMARY KEY, type INTEGER, default_value BLOB)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label TEXT, data BLOB)")
             cursor.execute("CREATE TABLE IF NOT EXISTS StringTable (name TEXT)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Settings (name TEXT PRIMARY KEY, value)")
             self._db.commit()
 
-    def _populateSensors(self):
-        self._sensorKeys = []
-        for row in self._cursor.execute("SELECT name, type, default_value FROM SensorKeys").fetchall():
-            print("Row: " + str(row))
-            self._sensorKeys.append({"name": row[0], "type": row[1], "default_value": struct.unpack(self._generateFormatType(row[1]), row[2])[0]})
+    def _populateSensors(self) -> None:
+        self._sensorKeys: List[SensorKey] = []
+        for name, type_, default_blob in self._cursor.execute("SELECT name, type, default_value FROM SensorKeys"):
+            default_value = struct.unpack(self.TYPE_FORMATS[type_], default_blob)[0]
+            self._sensorKeys.append(SensorKey(name, type_, default_value))
+        self._sensorKeySet: set[str] = set(sk.name for sk in self._sensorKeys)
 
+    def _populateStringTable(self) -> None:
+        self._stringTable: Dict[str, int] = dict((row[1], row[0]) for row in self._cursor.execute("SELECT ROWID, name FROM StringTable"))
+        self._reverseStringTable: Dict[int, str] = {v: k for k, v in self._stringTable.items()}
 
-        self._sensorKeySet = set(map(lambda x: x["name"], self._sensorKeys))
-
-    def _populateStringTable(self):
-        self._stringTable = {}
-        self._stringTable = dict(map(lambda row: (row[1], row[0]), self._cursor.execute("SELECT ROWID, name FROM StringTable")))
-        self._reverseStringTable = dict(map(lambda row: (row[1], row[0]), self._stringTable.items()))
-
-    def _getStringId(self, string):
-        if not string in self._stringTable:
+    def _getStringId(self, string: str) -> int:
+        if string not in self._stringTable:
             with self.lock, self._db:
-                cursor = self._db.cursor()
-                cursor.execute("INSERT INTO StringTable (name) VALUES (?)", (string,))
+                self._db.execute("INSERT INTO StringTable (name) VALUES (?)", (string,))
                 self._db.commit()
             self._populateStringTable()
         return self._stringTable[string]
 
-    def _getType(self, variable):
-        self.logger.debug("Get type called for: " + str(variable))
+    def _getType(self, variable: Any) -> int:
         if isinstance(variable, int):
-            self.logger.debug(str(variable) + "is an int")
-            return SkillStore.TYPE_INT
+            return self.TYPE_INT
         elif isinstance(variable, float):
-            self.logger.debug(str(variable) + "is an float")
-            return SkillStore.TYPE_FLOAT
+            return self.TYPE_FLOAT
         elif isinstance(variable, str):
             try:
                 float(variable)
-                if '.' in variable:
-                    return SkillStore.TYPE_FLOAT
-                else:
-                    return SkillStore.TYPE_INT
-            except:
-                return SkillStore.TYPE_STRING
-        else:
-            raise ValueError("Unsupported type for: " + str(variable))
-        
-    def _getDbValue(self, variable):
-        type = self._getType(variable)
-        if type == SkillStore.TYPE_STRING:
+                return self.TYPE_FLOAT if '.' in variable else self.TYPE_INT
+            except ValueError:
+                return self.TYPE_STRING
+        raise ValueError(f"Unsupported type: {variable}")
+
+    def _getDbValue(self, variable: Any) -> Union[int, float]:
+        varType = self._getType(variable)
+        if varType == self.TYPE_STRING:
             return self._getStringId(variable)
-        elif type == SkillStore.TYPE_INT:
+        elif varType == self.TYPE_INT:
             return int(variable)
-        elif type == SkillStore.TYPE_FLOAT:
+        elif varType == self.TYPE_FLOAT:
             return float(variable)
-        else:
-            raise ValueError("Unsupported type for: " + str(variable))
-        
-    def _getValue(self, sensorKey, value):
-        if sensorKey["type"] == SkillStore.TYPE_STRING:
-            return self._reverseStringTable[value]
-        else:
-            return value
-        
-    def _generateFormatType(self, type):
-        if type == SkillStore.TYPE_INT:
-            return "i"
-        elif type == SkillStore.TYPE_FLOAT:
-            return "f"
-        elif type == SkillStore.TYPE_STRING:
-            return "i"
-        else:
-            raise ValueError("Unsupported type")
-        
-    def _generateFormatString(self, size=-1):
-        formatString = ""
+        raise ValueError(f"Unsupported type: {variable}")
+
+    def _getValue(self, sensorKey: SensorKey, value: Any) -> Any:
+        return self._reverseStringTable[value] if sensorKey.type == self.TYPE_STRING else value
+
+    def _generateFormatString(self, size: int = -1) -> str:
+        formatStr = ""
         currentSize = 0
         for sensorKey in self._sensorKeys:
-            if size > 0 and currentSize >= size:
+            if 0 < size <= currentSize:
                 break
-            formatString += self._generateFormatType(sensorKey["type"])
+            formatStr += self.TYPE_FORMATS[sensorKey.type]
             currentSize += 4
-        return formatString
-           
-    def _addSensorType(self, sensorName, value):
-        print("Adding sensor type: " + str(sensorName) + " with value: " + str(value))
-        sensorType = self._getType(value)
-        unknownValue = self._getDbValue(str(self._unknownValue) if sensorType == SkillStore.TYPE_STRING else self._unknownValue)
+        return formatStr
 
-        default_value = struct.pack(self._generateFormatType(sensorType), unknownValue)
+    def _addSensorType(self, name: str, value: Any) -> None:
+        sensorType = self._getType(value)
+        unknownValue = self._getDbValue(str(self._unknownValue) if sensorType == self.TYPE_STRING else self._unknownValue)
+        packedDefault = struct.pack(self.TYPE_FORMATS[sensorType], unknownValue)
         with self.lock, self._db:
             try:
-                cursor = self._db.cursor()
-                cursor.execute("INSERT INTO SensorKeys (name, type, default_value) VALUES (?, ?, ?)", (sensorName, sensorType, default_value,))
+                self._db.execute("INSERT INTO SensorKeys (name, type, default_value) VALUES (?, ?, ?)", (name, sensorType, packedDefault))
                 self._db.commit()
-                self._sensorKeys.append({"name": sensorName, "type": sensorType, "default_value": unknownValue})
-                self._sensorKeySet.add(sensorName)
+                self._sensorKeys.append(SensorKey(name, sensorType, unknownValue))
+                self._sensorKeySet.add(name)
             except sqlite3.IntegrityError:
                 pass
 
-    def sortEntityValues(self, entityMap, forTraining: bool):
-        sensorValues = []
+    def sortEntityValues(self, entityMap: Dict[str, Any], forTraining: bool) -> List[Any]:
+        values: List[Any] = []
         remaining = set(entityMap.keys())
-        for i, sensorKey in enumerate(self._sensorKeys):
-            if sensorKey["name"] not in entityMap:
-                sensorValues.append(self._getDbValue(sensorKey["default_value"]))
-            else:
-                if entityMap[sensorKey["name"]] == "unknown" or entityMap[sensorKey["name"]] == "unavailable":
-                    sensorValues.append(self._getDbValue(sensorKey["default_value"]))
-                else:
-                    sensorValues.append(entityMap[sensorKey["name"]])
-            remaining.remove(sensorKey["name"])
-        
+        for sensor in self._sensorKeys:
+            val = entityMap.get(sensor.name, sensor.default_value)
+            if val in ("unknown", "unavailable"):
+                val = sensor.default_value
+            values.append(self._getDbValue(val))
+            remaining.discard(sensor.name)
+
         if forTraining:
-            for entityKey in remaining:
-                self._addSensorType(entityKey, entityMap[entityKey])
-                sensorValues.append(self._getDbValue(entityMap[entityKey]))
+            for key in remaining:
+                self._addSensorType(key, entityMap[key])
+                values.append(self._getDbValue(entityMap[key]))
 
-        return sensorValues
+        return values
 
-    def addObservation(self, label, sensors):
+    def addObservation(self, label: str, sensors: Dict[str, Any]) -> None:
         for sensor in sensors:
             if sensor not in self._sensorKeySet:
                 self._addSensorType(sensor, sensors[sensor])
 
-        formatString = self._generateFormatString()
-        values = []
-        for sensor in self._sensorKeys:
-            if sensor["name"] in sensors:
-                values.append(self._getDbValue(sensors[sensor["name"]]))
-            else:
-                values.append(self._getDbValue(sensor["default_value"]))
-        packedValues = struct.pack(formatString, *values)
+        formatStr = self._generateFormatString()
+        values = [self._getDbValue(sensors.get(sensor.name, sensor.default_value)) for sensor in self._sensorKeys]
+        packed = struct.pack(formatStr, *values)
 
         with self.lock, self._db:
-            cursor = self._db.cursor()
-            cursor.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time.time(), label, packedValues))
+            self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time.time(), label, packed))
             self._db.commit()
 
-    def getObservations(self):
-        self._cursor.execute("SELECT * FROM Observations ORDER BY time DESC")
-        observations = []
-        for time, label, data in self._cursor.fetchall():
-            formatString = self._generateFormatString(len(data))
-            unpackedData = struct.unpack(formatString, data)
-            sensorValues = {}
-            observation = {
-                "label": label,
-                "time": time,
-                "sensorValues": sensorValues
+    def getObservations(self) -> List[SkillObservation]:
+        self._cursor.execute("SELECT time, label, data FROM Observations ORDER BY time DESC")
+        observations: List[SkillObservation] = []
+
+        for timeVal, label, data in self._cursor.fetchall():
+            formatStr = self._generateFormatString(len(data))
+            unpacked = struct.unpack(formatStr, data)
+            sensorValues = {
+                sensor.name: self._getValue(sensor, unpacked[i] if i < len(unpacked) else sensor.default_value)
+                for i, sensor in enumerate(self._sensorKeys)
             }
-
-            for i, sensorKey in enumerate(self._sensorKeys):
-                if i < len(unpackedData):
-                    sensorValues[sensorKey["name"]] = self._getValue(sensorKey, unpackedData[i])
-                else:
-                    sensorValues[sensorKey["name"]] = self._getValue(sensorKey, sensorKey["default_value"])
-
-            observations.append(observation)
+            observations.append(SkillObservation(timeVal, label, sensorValues))
         return observations
-    
-    def setDefaultValue(self, sensorName, value):
+
+    def setDefaultValue(self, sensorName: str, value: Any) -> None:
         if sensorName == "*":
             self._saveSetting("unknown_value", value)
             return
 
         if sensorName not in self._sensorKeySet:
             raise ValueError("Sensor not found")
-        sensorType = self._getType(value)
-        if sensorType != self._sensorKeys[sensorName]["type"]:
+
+        sensor = next(s for s in self._sensorKeys if s.name == sensorName)
+        if self._getType(value) != sensor.type:
             raise ValueError("Type mismatch")
-        default_value = struct.pack(self._generateFormatType(sensorType), self._getDbValue(value))
+
+        packed = struct.pack(self.TYPE_FORMATS[sensor.type], self._getDbValue(value))
         with self.lock, self._db:
-            cursor = self._db.cursor()
-            cursor.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (default_value, sensorName))
+            self._db.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (packed, sensorName))
             self._db.commit()
 
-    def _getSetting(self, name, default_value):
-        self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,)) 
+    def _getSetting(self, name: str, default_value: Any) -> Any:
+        self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,))
         row = self._cursor.fetchone()
         return row[0] if row else default_value
-    
-    def _saveSetting(self, name, value):
-        with self.lock, self._db:
-            cursor = self._db.cursor()
-            cursor.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))
 
-    def setMqttTopic(self, mqttTopic):
+    def _saveSetting(self, name: str, value: Any) -> None:
+        with self.lock, self._db:
+            self._db.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))
+
+    def setMqttTopic(self, mqttTopic: str) -> None:
         self._saveSetting("mqtt_topic", mqttTopic)
 
-    def getMqttTopic(self):
+    def getMqttTopic(self) -> Optional[str]:
         return self._getSetting("mqtt_topic", None)
-    
-    def setName(self, name):
+
+    def setName(self, name: str) -> None:
         self._saveSetting("name", name)
 
-    def getName(self):
+    def getName(self) -> Optional[str]:
         return self._getSetting("name", None)
-    
-    def getLabels(self):
+
+    def getLabels(self) -> List[str]:
         return [row[0] for row in self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")]
-    
-    def close(self):
+
+    def close(self) -> None:
         try:
             with self.lock:
                 self._db.close()

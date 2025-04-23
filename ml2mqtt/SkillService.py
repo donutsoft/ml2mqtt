@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from SkillStore import SkillStore
 from classifiers.RandomForest import RandomForest
 from paho.mqtt.client import Client as MqttClient  # Or your MQTT client wrapper
-import pandas as pd
+from SkillStore import SkillObservation
 
 DISABLED_LABEL = "Disabled"
 
@@ -91,7 +91,7 @@ class SkillService:
     def setName(self, skillName: str) -> None:
         self._skillstore.setName(skillName)
 
-    def getObservations(self) -> pd.DataFrame:
+    def getObservations(self) -> List[SkillObservation]:
         return self._skillstore.getObservations()
 
     def getLabels(self) -> List[str]:

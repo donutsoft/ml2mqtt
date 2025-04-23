@@ -8,18 +8,20 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.tree import export_graphviz
 import logging
 
+from SkillStore import SkillObservation
+
 class RandomForest:
     def __init__(self):
         self.logger = logging.getLogger("ml2mqtt")
         self._rf_model = None
         self.labelEncoder = LabelEncoder()
 
-    def populateDataframe(self, observations):
+    def populateDataframe(self, observations: list[SkillObservation]):
         data = []
         labels = []
         for observation in observations:
-            label = observation["label"]
-            sensorValues = observation["sensorValues"]
+            label = observation.label
+            sensorValues = observation.sensorValues
             data.append(sensorValues)
             labels.append(label)
         X = pd.DataFrame.from_records(data)
