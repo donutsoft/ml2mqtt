@@ -6,3 +6,4 @@ skills/
 *.pyo
 *.pyd
 *.db
+ml2mqtt/.DS_Store
