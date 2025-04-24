@@ -146,12 +146,13 @@ class RandomForest:
         y = self.labelEncoder.fit_transform(labels)
 
         try:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+            # Final 30% is held out for post-evaluation
+            X_trainval, X_test_final, y_trainval, y_test_final = train_test_split(X, y, test_size=0.3, random_state=42)
 
             # --- Stage 1: Randomized Search
             randomGrid = {
-                'n_estimators': list(range(50, 201, 25)),
-                'max_depth': [None] + list(range(10, 41, 10)),
+                'n_estimators': list(range(50, 501, 25)),
+                'max_depth': [None] + list(range(1, 41, 10)),
                 'min_samples_split': [2, 5, 10],
                 'min_samples_leaf': [1, 2, 4],
                 'max_features': ['sqrt', 'log2'],
@@ -167,10 +168,11 @@ class RandomForest:
                 cv=3,
                 n_jobs=-1,
                 random_state=42,
-                verbose=1
+                verbose=1,
+                refit=True
             )
 
-            randomSearch.fit(X_train, y_train)
+            randomSearch.fit(X_trainval, y_trainval)
             bestRandomParams = randomSearch.best_params_
             self.logger.info(f"Stage 1 best parameters: {bestRandomParams}")
 
@@ -199,18 +201,23 @@ class RandomForest:
                 scoring='accuracy',
                 cv=5,
                 n_jobs=-1,
-                verbose=1
+                verbose=1,
+                refit=True
             )
 
-            gridSearch.fit(X_train, y_train)
+            gridSearch.fit(X_trainval, y_trainval)
             bestParams = gridSearch.best_params_
 
+            # Evaluate final performance on independent test set
+            finalAccuracy = accuracy_score(y_test_final, gridSearch.best_estimator_.predict(X_test_final))
+            self.logger.info(f"Final accuracy on held-out test set: {round(finalAccuracy, 4)}")
+
+            # Store the trained model and final test set
             self._rf_model = gridSearch.best_estimator_
-            self._X_test = X_test
-            self._y_test = y_test
+            self._X_test = X_test_final
+            self._y_test = y_test_final
             self._modelTrained = True
 
-            self.logger.info(f"Stage 2 refined best parameters: {bestParams}")
             return bestParams
 
         except Exception as e:
