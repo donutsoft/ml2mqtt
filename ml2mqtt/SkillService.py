@@ -113,3 +113,6 @@ class SkillService:
     
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
         return self._randomForest.getLabelStats()
+    
+    def optimizeParameters(self) -> None:
+        self._randomForest.optimizeParameters(self._skillstore.getObservations())

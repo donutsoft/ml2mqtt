@@ -1,6 +1,5 @@
 <div class="settingsGroup">
     <h3>Classifier Settings</h3>
-  
     <div class="formField">
       <label for="classifier">Classifier</label>
       <select id="classifier" name="classifier" disabled class="styledSelect">
@@ -9,8 +8,8 @@
     </div>
   
     <div class="formField" style="flex-direction: row; gap: 1rem;">
-      <button type="submit" name="action" value="tune" class="btn small">🔧 Automatically Tune Model</button>
-      <button type="submit" name="action" value="test" class="btn small">📊 Test Model & Show Accuracy</button>
+      <button type="submit" name="action" value="tune" class="btn small">Automatically Tune Model</button>
+      <button type="submit" name="action" value="test" class="btn small">Test Model & Show Accuracy</button>
     </div>
   
     <div class="formField">
@@ -85,8 +84,73 @@
       </div>
     </div>
   </div>
-  
+  <div id="tuneToast" class="toast">
+    <span id="toastMessage"></span><span id="toastDots"></span>
+  </div>
   <script>
+  const modelName = "{{ model.name }}";
+
+  document.querySelector('button[name="action"][value="tune"]').addEventListener("click", function (e) {
+    e.preventDefault();
+    showToast("Working", /* error=*/ false, /*animate=*/ true);
+    runTuningRequest();
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+  if (localStorage.getItem("tuningComplete") === "true") {
+    localStorage.removeItem("tuningComplete");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    showToast("Finished!");
+  }
+});
+
+  async function runTuningRequest() {
+    try {
+      const response = await fetch(`/edit-model/${modelName}/settings/autotune`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+
+
+      if (response.ok) {
+        const result = await response.json();
+        localStorage.setItem("tuningComplete", "true");
+          window.location.reload();
+      } else {
+        
+        showToast("Error occurred.", true);
+      }
+    } catch (err) {
+      showToast("Server error.", true);
+    }
+  }
+
+  let toastInterval = null;
+
+function showToast(message, isError = false, animated = false) {
+  const toast = document.getElementById("tuneToast");
+  const msg = document.getElementById("toastMessage");
+  const dots = document.getElementById("toastDots");
+
+  msg.textContent = message;
+  dots.textContent = "";
+  toast.classList.add("show");
+  toast.style.backgroundColor = isError ? "#a94442" : "#222";
+
+  if (animated) {
+    let dotCount = 0;
+    toastInterval = setInterval(() => {
+      dotCount = (dotCount + 1) % 4;
+      dots.textContent = ".".repeat(dotCount);
+    }, 500);
+  } else {
+    clearInterval(toastInterval);
+    dots.textContent = "";
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, isError ? 5000 : 10000);
+  }
+}
     function toggleAdvancedParams() {
       const el = document.getElementById("advancedParams");
       el.style.display = el.style.display === "none" ? "block" : "none";

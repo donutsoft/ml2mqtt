@@ -167,8 +167,9 @@ def editModel(modelName: str, section: str = "settings") -> str:
 def updateModelSettings(modelName: str) -> str:
     return json.dumps({"success": True})
 
-@app.route("/edit-model/<string:modelName>/settings/autotune")
+@app.route("/edit-model/<string:modelName>/settings/autotune", methods=["POST"])
 def autoTuneModel(modelName: str) -> str:
+    skillManager.getSkill(modelName).optimizeParameters()
     return json.dumps({"success": True})
 
 @app.route("/edit-model/<string:modelName>/settings/test")

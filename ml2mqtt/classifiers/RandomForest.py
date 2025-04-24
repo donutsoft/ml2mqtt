@@ -177,7 +177,7 @@ class RandomForest:
             # --- Stage 2: Refined Grid around best
             def expandRange(val, step, minimum=1):
                 if isinstance(val, int):
-                    return list(set([
+                    return sorted(set([
                         max(val - step, minimum),
                         val,
                         val + step
@@ -185,10 +185,10 @@ class RandomForest:
                 return [val]
 
             refinedGrid = {
-                'n_estimators': expandRange(bestRandomParams['n_estimators'], 50),
-                'max_depth': expandRange(bestRandomParams['max_depth'], 10) if bestRandomParams['max_depth'] else [None],
-                'min_samples_split': expandRange(bestRandomParams['min_samples_split'], 2),
-                'min_samples_leaf': expandRange(bestRandomParams['min_samples_leaf'], 1),
+                'n_estimators': expandRange(bestRandomParams['n_estimators'], 50, minimum=10),
+                'max_depth': expandRange(bestRandomParams['max_depth'], 10, minimum=1) if bestRandomParams['max_depth'] else [None],
+                'min_samples_split': expandRange(bestRandomParams['min_samples_split'], 2, minimum=2),
+                'min_samples_leaf': expandRange(bestRandomParams['min_samples_leaf'], 1, minimum=1),
                 'max_features': [bestRandomParams['max_features']],
                 'bootstrap': [bestRandomParams['bootstrap']]
             }
