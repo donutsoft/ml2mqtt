@@ -28,6 +28,31 @@
         <p>{{ model.params.max_depth or "Unlimited" }}</p>
       </div>
     </div>
+    {% if model.params.labelStats %}
+    <h3 style="margin-top: 2rem;">Label Statistics</h3>
+    <table class="featureTable">
+        <thead>
+        <tr>
+            <th>Label</th>
+            <th>Support</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1 Score</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for label, stats in model.params.labelStats.items() %}
+            <tr>
+            <td>{{ label }}</td>
+            <td>{{ stats.support }}</td>
+            <td>{{ stats.precision }}</td>
+            <td>{{ stats.recall }}</td>
+            <td>{{ stats.f1 }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
   </div>
   
   <script>
@@ -45,7 +70,28 @@
   </script>
   
 <style>
-    
+    .featureTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.featureTable th,
+.featureTable td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #2c3e50;
+}
+
+.featureTable th {
+  background-color: #253545;
+  font-weight: 600;
+  color: #cdd9e5;
+}
+
+.featureTable tr:hover {
+  background-color: #1e2d3a;
+}
     .statsGrid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

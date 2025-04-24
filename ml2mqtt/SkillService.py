@@ -110,3 +110,6 @@ class SkillService:
 
     def getLabels(self) -> List[str]:
         return self._skillstore.getLabels()
+    
+    def getLabelStats(self) -> Optional[Dict[str, Any]]:
+        return self._randomForest.getLabelStats()

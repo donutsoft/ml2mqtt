@@ -103,7 +103,7 @@ def logsRaw() -> str:
 
 @app.route("/edit-model/<string:modelName>/<section>")
 def editModel(modelName: str, section: str = "settings") -> str:
-    validSections = ["settings", "entities", "observations",  "preprocessors", "postprocessors"]
+    validSections = ["settings", "entities", "observations",  "preprocessors", "postprocessors", "mqtt"]
 
     if section not in validSections:
         logger.error(f"Invalid section: {section} not found in {validSections}")
@@ -136,15 +136,21 @@ def editModel(modelName: str, section: str = "settings") -> str:
         model["totalPages"] = math.ceil(total / pageSize)
 
     elif section == "settings":
+        logger.info(f"Label stats {skillManager.getSkill(modelName).getLabelStats()}")
         model["params"] = { 
             "accuracy": skillManager.getSkill(modelName).getAccuracy(),
             "observationCount": len(skillManager.getSkill(modelName).getObservations()),
             "modelSize": skillManager.getSkill(modelName).getModelSize(),
             "n_estimators": 0,
-            "max_depth": 0
+            "max_depth": 0,
+            "labelStats": skillManager.getSkill(modelName).getLabelStats()
         }
     elif section == "entities":
         model["entities"] = skillManager.getSkill(modelName).getSensorKeys()
+    elif section == "mqtt":
+        model["params"] = {
+            "mqttTopic": skillManager.getSkill(modelName).getMqttTopic(),
+        }
 
     sectionTemplate = f"edit_model/{section}.html"
 

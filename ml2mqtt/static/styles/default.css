@@ -171,3 +171,7 @@ form {
     margin-left: 4px;
     cursor: help;
   }
+
+  .subheader {
+   color: #7e8c9c; margin-top: -0.25rem; margin-bottom: 1.5rem;
+  }
