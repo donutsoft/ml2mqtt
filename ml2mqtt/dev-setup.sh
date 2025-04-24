@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mypy app.py --check-untyped-defs
+
 # Customize these
 IMAGE_NAME="ml2mqtt"
 CONTAINER_NAME="ml2mqtt-dev"
@@ -28,7 +30,7 @@ docker run -d \
     python -m flask run --host=0.0.0.0 &
     pid=$!
     # Wait until a .py file is modified
-    inotifywait -e modify $(find . -type f -name "*.py") >/dev/null 2>&1
+    inotifywait -e modify $(find . -type f \( -name "*.py" -o -name "*.html" -o -name "*.css" \)) >/dev/null 2>&1
     kill $pid
     wait $pid
   done'

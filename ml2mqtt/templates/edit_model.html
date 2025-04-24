@@ -18,7 +18,10 @@
          class="menuLink {% if activeSection == 'preprocessors' %}active{% endif %}">Preprocessors</a>
       <a href="{{ url_for('editModel', modelName=model.name, section='postprocessors') }}"
          class="menuLink {% if activeSection == 'postprocessors' %}active{% endif %}">Postprocessors</a>
-    </nav>
+      <a href="{{ url_for('editModel', modelName=model.name, section='mqtt') }}"
+         class="menuLink {% if activeSection == 'mqtt' %}active{% endif %}">MQTT</a>
+
+      </nav>
   </aside>
 
   <!-- Main Content -->

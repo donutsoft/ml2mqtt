@@ -1,0 +1,40 @@
+<h2>Manage Entities</h2>
+<h4 class="subheader">Model: {{ model.name }}</h4>
+
+{% if model.entities %}
+  <table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
+    <thead>
+      <tr style="background-color: #1f2d3a;">
+        <th style="padding: 0.75rem;">Entity ID</th>
+        <th style="padding: 0.75rem;">Default Value</th>
+        <th style="padding: 0.75rem;">Data Type</th>
+        <th style="padding: 0.75rem;">Significance</th>
+        <th style="padding: 0.75rem; text-align: center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entity in model.entities %}
+      <tr id="entityRow-{{ entity.name }}" style="border-bottom: 1px solid #2c3e50;">
+        <td style="padding: 0.75rem;">{{ entity.name }}</td>
+        <td style="padding: 0.75rem;">
+            <input
+            type="text"
+            value="{{ entity.default_value }}"
+            onblur="updateEntityDefault('{{ model.name }}', '{{ entity.name }}', this.value)"
+            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px;">
+        </td>
+        <td style="padding: 0.75rem;">{{ entity.display_type }}</td>
+        <td style="padding: 0.75rem;">{{ entity.significance | round(4) }}</td>
+        <td style="text-align: center;">
+          <button onclick="deleteEntity('{{ model.name }}', '{{ entity.name }}')"
+                  style="background-color: transparent; border: none; color: #ff4d4d; cursor: pointer;">
+            Delete
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="margin-top: 2rem;">No entities found for this model.</p>
+{% endif %}

@@ -6,9 +6,10 @@ from io import StringIO
 
 import json
 import logging
+import math
 import os
 from typing import Callable, Any, cast, Dict, Protocol, TypedDict, List
-from SkillStore import SkillObservation
+from SkillStore import SkillObservation, SensorKey
 
 logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
@@ -102,23 +103,48 @@ def logsRaw() -> str:
 
 @app.route("/edit-model/<string:modelName>/<section>")
 def editModel(modelName: str, section: str = "settings") -> str:
-    validSections = ["settings", "observations", "preprocessors", "postprocessors"]
+    validSections = ["settings", "entities", "observations",  "preprocessors", "postprocessors"]
 
     if section not in validSections:
+        logger.error(f"Invalid section: {section} not found in {validSections}")
         abort(404)
 
     class ViewModel(TypedDict):
         name: str
         params: Dict[str, Any]
         observations: List[SkillObservation]
+        entities: List[SensorKey]
         labels: List[str]
-    model: ViewModel = {"name": modelName, "params": {}, "observations": [], "labels": []}
+        currentPage: int
+        totalPages: int
+
+    model: ViewModel = {"name": modelName, "params": {}, "observations": [], "labels": [], "currentPage": 0, "totalPages": 0}
 
     if section == "observations":
-        model["observations"] = skillManager.getSkill(modelName).getObservations()
+        page = int(request.args.get("page", 1))
+        pageSize = 50
+        allObservations = skillManager.getSkill(modelName).getObservations()
+        total = len(allObservations)
+
+        start = (page - 1) * pageSize
+        end = start + pageSize
+        paginated = allObservations[start:end]
+
+        model["observations"] = paginated
+        model["currentPage"] = page
         model["labels"] = skillManager.getSkill(modelName).getLabels()
+        model["totalPages"] = math.ceil(total / pageSize)
+
     elif section == "settings":
-        model["params"] = {}
+        model["params"] = { 
+            "accuracy": skillManager.getSkill(modelName).getAccuracy(),
+            "observationCount": len(skillManager.getSkill(modelName).getObservations()),
+            "modelSize": skillManager.getSkill(modelName).getModelSize(),
+            "n_estimators": 0,
+            "max_depth": 0
+        }
+    elif section == "entities":
+        model["entities"] = skillManager.getSkill(modelName).getSensorKeys()
 
     sectionTemplate = f"edit_model/{section}.html"
 

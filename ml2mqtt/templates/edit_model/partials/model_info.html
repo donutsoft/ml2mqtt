@@ -1,0 +1,81 @@
+<div class="settingsGroup">
+    <h2>Model Summary</h2>
+    <h4 class="subheader">Model: {{ model.name }}</h4>
+  
+    <div class="statsGrid">
+      <div class="statCard">
+        <h3>Accuracy</h3>
+        <p>{{ model.params.accuracy | round(4) if model.params.accuracy is not none else "Not Available" }}</p>
+      </div>
+  
+      <div class="statCard">
+        <h3>Observations</h3>
+        <p>{{ model.params.observationCount }}</p>
+      </div>
+  
+      <div class="statCard">
+        <h3>Model Size</h3>
+        <p id="modelSize" data-bytes="{{ model.params.modelSize }}"></p>
+      </div>
+  
+      <div class="statCard">
+        <h3>Number of Trees</h3>
+        <p>{{ model.params.n_estimators }}</p>
+      </div>
+  
+      <div class="statCard">
+        <h3>Max Depth</h3>
+        <p>{{ model.params.max_depth or "Unlimited" }}</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function formatBytes(bytes) {
+      if (!bytes || isNaN(bytes)) return "0 B";
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      const value = (bytes / Math.pow(1024, i)).toFixed(2);
+      return `${value} ${units[i]}`;
+    }
+  
+    const sizeEl = document.getElementById("modelSize");
+    const byteSize = parseInt(sizeEl.dataset.bytes, 10);
+    sizeEl.textContent = formatBytes(byteSize);
+  </script>
+  
+<style>
+    
+    .statsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+  .statCard {
+    background-color: #1a2735;
+    border: 1px solid #2c3e50;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .statCard h3 {
+    font-size: 1rem;
+    color: #c8d4e3;
+    margin-bottom: 0.5rem;
+  }
+
+  .statCard p {
+    font-size: 1.25rem;
+    color: white;
+    margin: 0;
+  }
+</style>

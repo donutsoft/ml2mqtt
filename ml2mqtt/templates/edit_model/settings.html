@@ -1,13 +1,11 @@
 <h2>Model Settings</h2>
 <h4 class="subheader">Model: {{ model.name }}</h4>
 
-<form method="POST" action="{{ url_for('updateModelSettings', modelName=model.name) }}">
-  <div class="formWrapper" style="max-width: 800px;">
-    {% include 'edit_model/partials/mqtt_settings.html' %}
-    {% include 'edit_model/partials/random_forest_settings.html' %}
-    <button type="submit" class="btn" style="margin-top: 2rem;">Save Settings</button>
-  </div>
-</form>
+<div class="settingsWrapper">
+  {% include 'edit_model/partials/model_info.html' %}
+  {% include 'edit_model/partials/mqtt_settings.html' %}
+  {% include 'edit_model/partials/random_forest_settings.html' %}
+</div>
 
 <style>
   .formWrapper {

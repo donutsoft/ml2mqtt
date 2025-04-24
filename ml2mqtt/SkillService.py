@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from SkillStore import SkillStore
 from classifiers.RandomForest import RandomForest
 from paho.mqtt.client import Client as MqttClient  # Or your MQTT client wrapper
-from SkillStore import SkillObservation
+from SkillStore import SkillObservation, SensorKey
 
 DISABLED_LABEL = "Disabled"
 
@@ -31,6 +31,16 @@ class SkillService:
     def _populateModel(self) -> None:
         observations = self._skillstore.getObservations()
         self._randomForest.populateDataframe(observations)
+
+    def getSensorKeys(self) -> List[SensorKey]:
+        features = self._randomForest.getFeatureImportance()
+        entities = self._skillstore.getSensorKeys()
+        for entity in entities:
+            entity.significance = features[entity.name] if entity.name in features else 0.0
+        return entities
+    
+    def getAccuracy(self) -> Optional[float]:
+        return self._randomForest.getAccuracy()
 
     def predictLabel(self, msg: Any) -> None:
         messageStr: str
@@ -94,6 +104,9 @@ class SkillService:
 
     def getObservations(self) -> List[SkillObservation]:
         return self._skillstore.getObservations()
+    
+    def getModelSize(self) -> float:
+        return self._skillstore.getModelSize()
 
     def getLabels(self) -> List[str]:
         return self._skillstore.getLabels()

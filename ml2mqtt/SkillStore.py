@@ -6,6 +6,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Union
+from pathlib import Path
 
 
 @dataclass
@@ -13,6 +14,16 @@ class SensorKey:
     name: str
     type: int
     default_value: Any
+    display_type: str = field(init=False)
+    significance: float = field(default=0)
+
+    def __post_init__(self):
+        if self.type == SkillStore.TYPE_INT:
+           self.display_type = "int"
+        elif self.type == SkillStore.TYPE_FLOAT:
+            self.display_type = "float"
+        elif self.type == SkillStore.TYPE_STRING:
+            self.display_type = "string"
 
 
 @dataclass
@@ -36,9 +47,11 @@ class SkillStore:
         TYPE_STRING: "i",  # stored as int reference to string table
     }
 
-    def __init__(self, skill: str, unknownValue: float = 9999.0):
+    def __init__(self, modelPath: str, unknownValue: float = 9999.0):
+        self.modelPath = modelPath
+        self.logger = logging.getLogger("ml2mqtt")
         self.lock = threading.Lock()
-        self._db = sqlite3.connect(skill, check_same_thread=False)
+        self._db = sqlite3.connect(modelPath, check_same_thread=False)
         self._db.execute("PRAGMA journal_mode=WAL")
         self._cursor = self._db.cursor()
         self._unknownValue: Union[str, float] = unknownValue
@@ -48,8 +61,7 @@ class SkillStore:
         self._populateStringTable()
 
         self._unknownValue = self._getSetting("unknown_value", self._unknownValue)
-        self.logger = logging.getLogger("ml2mqtt")
-        self.logger.info("SkillStore initialized with skill: %s", skill)
+        self.logger.info("SkillStore initialized with skill: %s", modelPath)
 
     def _createTables(self) -> None:
         with self.lock, self._db:
@@ -189,6 +201,12 @@ class SkillStore:
         with self.lock, self._db:
             self._db.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (packed, sensorName))
             self._db.commit()
+
+    def getSensorKeys(self):
+        return self._sensorKeys
+    
+    def getModelSize(self):
+        return Path(self.modelPath).stat().st_size
 
     def _getSetting(self, name: str, default_value: Any) -> Any:
         self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,))
