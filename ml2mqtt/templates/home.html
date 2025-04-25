@@ -20,7 +20,7 @@
         <td style="padding: 0.75rem; text-align: center;">
           <div style="display: flex; justify-content: center; gap: 2rem;">
             <a href="{{ url_for('editModel', modelName=model.name, section='settings') }}" style="color: #00aaff;">Edit</a>
-            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ model.name }}')" style="color: #ff4d4d;">Delete</a>
+            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ url_for('deleteModel', modelName=model.name) }}')" style="color: #ff4d4d;">Delete</a>
           </div>
         </td>
       </tr>
@@ -33,13 +33,13 @@
   </form>
 
   <script>
-    function confirmDelete(modelId, modelName) {
+    function confirmDelete(modelName, url) {
       const confirmMsg = `Are you sure you want to delete the model "${modelName}"? This action cannot be undone.`;
       if (confirm(confirmMsg)) {
         const form = document.getElementById('deleteForm');
         const input = document.getElementById('deleteSkillId');
         input.value = modelName;
-        form.action = `/delete-model/${modelName}`;
+        form.action = url;
         form.submit();
       }
     }

@@ -88,7 +88,7 @@ def createModel() -> Response:
 
     return render_template("create-model.html", title="Add Model", active_page="create_model")
 
-@app.route("/delete-model/<string:modelName>", methods=["POST"])
+@app.route("/delete-model/<string:modelName>/", methods=["POST"])
 def deleteModel(modelName: str) -> Response:
     skillManager.removeSkill(modelName)
     return redirect(url_for("home"))

@@ -28,7 +28,8 @@
             <th>Precision</th>
             <th>Recall</th>
             <th>F1 Score</th>
-        </tr>
+            <th>Actions</th>
+          </tr>
         </thead>
         <tbody>
         {% for label, stats in model.params.labelStats.items() %}
@@ -38,6 +39,8 @@
             <td>{{ stats.precision }}</td>
             <td>{{ stats.recall }}</td>
             <td>{{ stats.f1 }}</td>
+            <td><button onclick="deleteLabel('{{ model.name }}', '{{ label }}')"
+              style="background-color: transparent; border: none; color: #ff4d4d; cursor: pointer;">Delete</button></td>
             </tr>
         {% endfor %}
         </tbody>
@@ -57,6 +60,17 @@
     const sizeEl = document.getElementById("modelSize");
     const byteSize = parseInt(sizeEl.dataset.bytes, 10);
     sizeEl.textContent = formatBytes(byteSize);
+
+    function deleteLabel(modelName, label) {
+      const confirmMsg = `Are you sure you want to delete the label "${label}"? This action cannot be undone.`;
+      if (confirm(confirmMsg)) {
+        const form = document.getElementById('deleteForm');
+        const input = document.getElementById('deleteSkillId');
+        input.value = label;
+        form.action = `/delete-label/${modelName}/${label}`;
+        form.submit();
+      }
+    }
   </script>
   
 <style>
