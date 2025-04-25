@@ -1,13 +1,14 @@
 import logging
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from SkillStore import SkillStore
+from SkillStore import SkillStore, SkillObservation, SensorKey
 from classifiers.RandomForest import RandomForest, RandomForestParams
-from paho.mqtt.client import Client as MqttClient  # Or your MQTT client wrapper
-from SkillStore import SkillObservation, SensorKey
+from classifiers.KNNClassifier import KNNClassifier, KNNParams
+from paho.mqtt.client import Client as MqttClient
 
 DISABLED_LABEL = "Disabled"
+
 
 class SkillService:
     def __init__(self, mqttClient: MqttClient, skillstore: SkillStore):
@@ -15,6 +16,10 @@ class SkillService:
         self._mqttClient: MqttClient = mqttClient
         self._skillstore: SkillStore = skillstore
         self._previousLabel: Optional[str] = None
+
+        self._model: Union[RandomForest, KNNClassifier]
+        self._modelType: str
+        self._allParams: Dict[str, Dict[str, Any]] = {}
         self._populateModel()
 
     def dispose(self) -> None:
@@ -28,19 +33,31 @@ class SkillService:
         self._mqttClient.subscribe(f"{topic}/set", self.predictLabel)
 
     def _populateModel(self) -> None:
-        self._randomForest: RandomForest = RandomForest(params=self._skillstore.getDict('model_settings'))
+        settings = self._skillstore.getDict('model_settings') or {}
+        self._modelType = settings.get("model_type", "RandomForest")
+        self._allParams = settings.get("model_parameters", {})
+
+        paramsForThisModel = self._allParams.get(self._modelType, {})
+
+        self.logger.info(f"Loading with settings {settings}")
+
+        if self._modelType == "KNN":
+            self._model = KNNClassifier(params=paramsForThisModel)
+        else:
+            self._model = RandomForest(params=paramsForThisModel)
+
         observations = self._skillstore.getObservations()
-        self._randomForest.populateDataframe(observations)
+        self._model.populateDataframe(observations)
 
     def getSensorKeys(self) -> List[SensorKey]:
-        features = self._randomForest.getFeatureImportance()
+        features = self._model.getFeatureImportance() or {}
         entities = self._skillstore.getSensorKeys()
         for entity in entities:
-            entity.significance = features[entity.name] if entity.name in features else 0.0
+            entity.significance = features.get(entity.name, 0.0)
         return entities
-    
+
     def getAccuracy(self) -> Optional[float]:
-        return self._randomForest.getAccuracy()
+        return self._model.getAccuracy()
 
     def predictLabel(self, msg: Any) -> None:
         messageStr: str
@@ -55,7 +72,7 @@ class SkillService:
 
         try:
             entities: List[Dict[str, Any]] = json.loads(messageStr)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             self.logger.warning("Invalid JSON: %s", messageStr)
             return
 
@@ -79,7 +96,7 @@ class SkillService:
             self._skillstore.addObservation(label, entityMap)
             self._populateModel()
 
-        prediction = self._randomForest.predictLabel(entityValues)
+        prediction = self._model.predictLabel(entityValues)
 
         if prediction != self._previousLabel:
             self._previousLabel = prediction
@@ -96,32 +113,37 @@ class SkillService:
     def getName(self) -> str:
         return self._skillstore.getName() or ""
 
-    def setDefaultValue(self, sensorName: str, defaultValue: Any) -> None:
-        self._skillstore.setDefaultValue(sensorName, defaultValue)
-
     def setName(self, skillName: str) -> None:
         self._skillstore.setName(skillName)
 
+    def setDefaultValue(self, sensorName: str, defaultValue: Any) -> None:
+        self._skillstore.setDefaultValue(sensorName, defaultValue)
+
     def getObservations(self) -> List[SkillObservation]:
         return self._skillstore.getObservations()
-    
+
     def getModelSize(self) -> float:
         return self._skillstore.getModelSize()
 
     def getLabels(self) -> List[str]:
         return self._skillstore.getLabels()
-    
+
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
-        return self._randomForest.getLabelStats()
-    
+        return self._model.getLabelStats()
+
     def optimizeParameters(self) -> None:
-        self._randomForest.optimizeParameters(self._skillstore.getObservations())
-        self._skillstore.saveDict("model_settings", self.getModelParameters())
+        self._model.optimizeParameters(self._skillstore.getObservations())
+        self._allParams[self._modelType] = self._model.getModelParameters()
+        self._skillstore.saveDict("model_settings", self.getModelSettings())
 
-    def getModelParameters(self) -> RandomForestParams:
-        return self._randomForest.getModelParameters()
-    
-    def setModelParameters(self, params: RandomForestParams) -> None:
-        self._skillstore.saveDict("model_settings", params)
+    def getModelSettings(self) -> Dict[str, Any]:
+        return {
+            "model_type": self._modelType,
+            "model_parameters": self._allParams
+        }
+
+    def setModelSettings(self, settings: Dict[str, Any]) -> None:
+        self._modelType = settings.get("model_type", "RandomForest")
+        self._allParams = settings.get("model_parameters", {})
+        self._skillstore.saveDict("model_settings", settings)
         self._populateModel()
-

@@ -11,6 +11,7 @@ import os
 from typing import Callable, Any, cast, Dict, Protocol, TypedDict, List, Optional
 from SkillStore import SkillObservation, SensorKey
 from classifiers.RandomForest import RandomForestParams
+from classifiers.KNNClassifier import KNNParams
 
 logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
@@ -142,7 +143,7 @@ def editModel(modelName: str, section: str = "settings") -> str:
             "accuracy": skillManager.getSkill(modelName).getAccuracy(),
             "observationCount": len(skillManager.getSkill(modelName).getObservations()),
             "modelSize": skillManager.getSkill(modelName).getModelSize(),
-            "modelParameters": skillManager.getSkill(modelName).getModelParameters(),
+            "modelParameters": skillManager.getSkill(modelName).getModelSettings(),
             "labelStats": skillManager.getSkill(modelName).getLabelStats()
         }
     elif section == "entities":
@@ -174,27 +175,48 @@ def updateModelSettings(modelName: str) -> str:
         return int(val) if val and val.isdigit() else None
 
     def get_bool(name: str) -> bool:
-        return request.form.get(name) == "true"
+        return request.form.get(name) in ["true", "on", "1"]
 
     def get_str_or_none(name: str) -> Optional[str]:
         val = request.form.get(name)
         return val if val not in ["None", "", None] else None
 
     try:
-        modelParams: RandomForestParams = {
-            "n_estimators": get_int("nEstimators", 100),
-            "max_depth": get_optional_int("maxDepth"),
-            "min_samples_split": get_int("minSamplesSplit", 2),
-            "min_samples_leaf": get_int("minSamplesLeaf", 1),
-            "max_features": get_str_or_none("maxFeatures"),
-            "class_weight": get_str_or_none("classWeight"),
-            "bootstrap": get_bool("bootstrap"),
-            "oob_score": get_bool("oobScore"),
+        modelType = request.form.get("modelType", "RandomForest")
+        app.logger.info(f"Updating model '{modelName}' with type: {modelType}")
+
+        settings: Dict[str, Any] = {
+            "model_type": modelType,
+            "model_parameters": {}
         }
 
-        # Example: store to DB, update model, etc.
-        app.logger.info(f"Received new parameters for model '{modelName}': {modelParams}")
-        skillManager.getSkill(modelName).setModelParameters(modelParams)
+        if modelType == "RandomForest":
+            rfParams: RandomForestParams = {
+                "n_estimators": get_int("nEstimators", 100),
+                "max_depth": get_optional_int("maxDepth"),
+                "min_samples_split": get_int("minSamplesSplit", 2),
+                "min_samples_leaf": get_int("minSamplesLeaf", 1),
+                "max_features": get_str_or_none("maxFeatures"),
+                "class_weight": get_str_or_none("classWeight"),
+                "bootstrap": get_bool("bootstrap"),
+                "oob_score": get_bool("oobScore"),
+            }
+            settings["model_parameters"]["RandomForest"] = rfParams
+
+        elif modelType == "KNN":
+            knnParams: KNNParams = {
+                "n_neighbors": get_int("nNeighbors", 5),
+                "weights": request.form.get("weights", "uniform"),
+                "metric": request.form.get("metric", "minkowski"),
+            }
+            settings["model_parameters"]["KNN"] = knnParams
+
+        else:
+            return jsonify(success=False, error=f"Unknown model type '{modelType}'"), 400
+
+        # Store in DB and update live model
+        skillManager.getSkill(modelName).setModelSettings(settings)
+        app.logger.info(f"Applied new settings to model '{modelName}': {settings}")
 
         return jsonify(success=True)
 
