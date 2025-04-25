@@ -9,7 +9,7 @@
   padding: 1rem;
   border: 1px solid #2c3e50;">
       <a href="{{ url_for('editModel', modelName=model.name, section='settings') }}"
-         class="menuLink {% if activeSection == 'settings' %}active{% endif %}">Classifier</a>
+         class="menuLink {% if activeSection == 'settings' %}active{% endif %}">Model</a>
       <a href="{{ url_for('editModel', modelName=model.name, section='entities') }}"
          class="menuLink {% if activeSection == 'entities' %}active{% endif %}">Entities</a>
       <a href="{{ url_for('editModel', modelName=model.name, section='observations') }}"

@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from SkillStore import SkillStore
-from classifiers.RandomForest import RandomForest
+from classifiers.RandomForest import RandomForest, RandomForestParams
 from paho.mqtt.client import Client as MqttClient  # Or your MQTT client wrapper
 from SkillStore import SkillObservation, SensorKey
 
@@ -14,7 +14,6 @@ class SkillService:
         self.logger: logging.Logger = logging.getLogger("ml2mqtt")
         self._mqttClient: MqttClient = mqttClient
         self._skillstore: SkillStore = skillstore
-        self._randomForest: RandomForest = RandomForest()
         self._previousLabel: Optional[str] = None
         self._populateModel()
 
@@ -29,6 +28,7 @@ class SkillService:
         self._mqttClient.subscribe(f"{topic}/set", self.predictLabel)
 
     def _populateModel(self) -> None:
+        self._randomForest: RandomForest = RandomForest(params=self._skillstore.getDict('model_settings'))
         observations = self._skillstore.getObservations()
         self._randomForest.populateDataframe(observations)
 
@@ -116,3 +116,12 @@ class SkillService:
     
     def optimizeParameters(self) -> None:
         self._randomForest.optimizeParameters(self._skillstore.getObservations())
+        self._skillstore.saveDict("model_settings", self.getModelParameters())
+
+    def getModelParameters(self) -> RandomForestParams:
+        return self._randomForest.getModelParameters()
+    
+    def setModelParameters(self, params: RandomForestParams) -> None:
+        self._skillstore.saveDict("model_settings", params)
+        self._populateModel()
+

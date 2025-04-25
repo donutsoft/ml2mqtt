@@ -1,6 +1,6 @@
 from Config import Config
 from MqttClient import MqttClient
-from flask import Flask, render_template, request, url_for, redirect, abort, Response
+from flask import Flask, render_template, request, url_for, redirect, abort, Response, jsonify
 from SkillManager import SkillManager
 from io import StringIO
 
@@ -8,8 +8,9 @@ import json
 import logging
 import math
 import os
-from typing import Callable, Any, cast, Dict, Protocol, TypedDict, List
+from typing import Callable, Any, cast, Dict, Protocol, TypedDict, List, Optional
 from SkillStore import SkillObservation, SensorKey
+from classifiers.RandomForest import RandomForestParams
 
 logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
@@ -141,8 +142,7 @@ def editModel(modelName: str, section: str = "settings") -> str:
             "accuracy": skillManager.getSkill(modelName).getAccuracy(),
             "observationCount": len(skillManager.getSkill(modelName).getObservations()),
             "modelSize": skillManager.getSkill(modelName).getModelSize(),
-            "n_estimators": 0,
-            "max_depth": 0,
+            "modelParameters": skillManager.getSkill(modelName).getModelParameters(),
             "labelStats": skillManager.getSkill(modelName).getLabelStats()
         }
     elif section == "entities":
@@ -163,17 +163,48 @@ def editModel(modelName: str, section: str = "settings") -> str:
         sectionTemplate=sectionTemplate
     )
 
-@app.route("/edit-model/<string:modelName>/settings/update")
+@app.route("/edit-model/<string:modelName>/settings/update", methods=["POST"])
 def updateModelSettings(modelName: str) -> str:
-    return json.dumps({"success": True})
+    def get_int(name: str, default: Optional[int] = None) -> Optional[int]:
+        val = request.form.get(name)
+        return int(val) if val and val.isdigit() else default
+
+    def get_optional_int(name: str) -> Optional[int]:
+        val = request.form.get(name)
+        return int(val) if val and val.isdigit() else None
+
+    def get_bool(name: str) -> bool:
+        return request.form.get(name) == "true"
+
+    def get_str_or_none(name: str) -> Optional[str]:
+        val = request.form.get(name)
+        return val if val not in ["None", "", None] else None
+
+    try:
+        modelParams: RandomForestParams = {
+            "n_estimators": get_int("nEstimators", 100),
+            "max_depth": get_optional_int("maxDepth"),
+            "min_samples_split": get_int("minSamplesSplit", 2),
+            "min_samples_leaf": get_int("minSamplesLeaf", 1),
+            "max_features": get_str_or_none("maxFeatures"),
+            "class_weight": get_str_or_none("classWeight"),
+            "bootstrap": get_bool("bootstrap"),
+            "oob_score": get_bool("oobScore"),
+        }
+
+        # Example: store to DB, update model, etc.
+        app.logger.info(f"Received new parameters for model '{modelName}': {modelParams}")
+        skillManager.getSkill(modelName).setModelParameters(modelParams)
+
+        return jsonify(success=True)
+
+    except Exception as e:
+        app.logger.error(f"Failed to update model settings for {modelName}: {e}")
+        return jsonify(success=False, error=str(e)), 400
 
 @app.route("/edit-model/<string:modelName>/settings/autotune", methods=["POST"])
 def autoTuneModel(modelName: str) -> str:
     skillManager.getSkill(modelName).optimizeParameters()
-    return json.dumps({"success": True})
-
-@app.route("/edit-model/<string:modelName>/settings/test")
-def testModel(modelName: str) -> str:
     return json.dumps({"success": True})
 
 @app.route("/api/model/<int:modelId>/observation/<int:observationId>/explicit", methods=["POST"])

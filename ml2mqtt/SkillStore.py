@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Union
 from pathlib import Path
-
+import json
 
 @dataclass
 class SensorKey:
@@ -212,7 +212,13 @@ class SkillStore:
         self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,))
         row = self._cursor.fetchone()
         return row[0] if row else default_value
-
+    
+    def getDict(self, name:str) -> Optional[Dict[str, Any]]:
+        return json.loads(self._getSetting(name, "{}"))
+    
+    def saveDict(self, name: str, value: Dict[str, Any]) -> None:
+        self._saveSetting(name, json.dumps(value))
+        
     def _saveSetting(self, name: str, value: Any) -> None:
         with self.lock, self._db:
             self._db.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))

@@ -17,16 +17,6 @@
         <h3>Model Size</h3>
         <p id="modelSize" data-bytes="{{ model.params.modelSize }}"></p>
       </div>
-  
-      <div class="statCard">
-        <h3>Number of Trees</h3>
-        <p>{{ model.params.n_estimators }}</p>
-      </div>
-  
-      <div class="statCard">
-        <h3>Max Depth</h3>
-        <p>{{ model.params.max_depth or "Unlimited" }}</p>
-      </div>
     </div>
     {% if model.params.labelStats %}
     <h3 style="margin-top: 2rem;">Label Statistics</h3>

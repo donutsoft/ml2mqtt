@@ -7,15 +7,40 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.tree import export_graphviz
 import logging
+from typing import TypedDict, Optional, Literal, Union
 
 from typing import Optional, List, Dict, Any
 from SkillStore import SkillObservation
 from sklearn.metrics import classification_report
 import random
 
+class RandomForestParams(TypedDict):
+    n_estimators: int
+    max_depth: Optional[int]
+    min_samples_split: int
+    min_samples_leaf: int
+    max_features: Union[str, None]
+    class_weight: Union[str, None]
+    bootstrap: bool
+    oob_score: bool
+
+DEFAULT_RANDOM_FOREST_PARAMS: RandomForestParams = {
+    "n_estimators": 100,
+    "max_depth": None,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "max_features": "sqrt",
+    "class_weight": None,
+    "bootstrap": True,
+    "oob_score": False
+}
+
 class RandomForest:
-    def __init__(self):
+    def __init__(self, params: Optional[RandomForestParams] = None):
+        self.params: RandomForestParams = {**DEFAULT_RANDOM_FOREST_PARAMS, **(params or {})}
+        
         self.logger: logging.Logger = logging.getLogger("ml2mqtt")
+        self.logger.info(f"RandomForest initialized with params: {self.params}")
         self._X_test: Optional[pd.DataFrame] = None
         self._y_test: Optional[np.ndarray] = None
         self._rf_model: Optional[RandomForestClassifier] = None
@@ -43,7 +68,7 @@ class RandomForest:
             self._X_test = X_test
             self._y_test = y_test
 
-            rf_model = RandomForestClassifier(n_estimators=50)
+            rf_model = RandomForestClassifier(**self.params)
             rf_model.fit(X_train, y_train)
             self._rf_model = rf_model
             self._modelTrained = True
@@ -106,7 +131,8 @@ class RandomForest:
                 y_pred,
                 labels=np.arange(len(self.labelEncoder.classes_)),
                 target_names=self.labelEncoder.classes_,
-                output_dict=True
+                output_dict=True,
+                zero_division=0
             )
 
             # Filter only the labels, exclude 'accuracy', 'macro avg', etc.
@@ -149,31 +175,48 @@ class RandomForest:
             # Final 30% is held out for post-evaluation
             X_trainval, X_test_final, y_trainval, y_test_final = train_test_split(X, y, test_size=0.3, random_state=42)
 
-            # --- Stage 1: Randomized Search
-            randomGrid = {
+            # --- Shared param space
+            baseGrid = {
                 'n_estimators': list(range(50, 501, 25)),
                 'max_depth': [None] + list(range(1, 41, 10)),
                 'min_samples_split': [2, 5, 10],
                 'min_samples_leaf': [1, 2, 4],
-                'max_features': ['sqrt', 'log2'],
-                'bootstrap': [True, False]
+                'max_features': ['sqrt', 'log2', None],
+                'class_weight': [None, 'balanced', 'balanced_subsample'],
             }
 
-            rf = RandomForestClassifier()
-            randomSearch = RandomizedSearchCV(
-                estimator=rf,
-                param_distributions=randomGrid,
-                n_iter=30,
-                scoring='accuracy',
-                cv=3,
-                n_jobs=-1,
-                random_state=42,
-                verbose=1,
-                refit=True
-            )
+            bootstrapGrid = {
+                **baseGrid,
+                'bootstrap': [True],
+                'oob_score': [True, False],
+            }
 
-            randomSearch.fit(X_trainval, y_trainval)
-            bestRandomParams = randomSearch.best_params_
+            noBootstrapGrid = {
+                **baseGrid,
+                'bootstrap': [False],
+                # no oob_score when bootstrap is False
+            }
+
+            def runSearch(grid):
+                search = RandomizedSearchCV(
+                    estimator=RandomForestClassifier(),
+                    param_distributions=grid,
+                    n_iter=30,
+                    scoring='accuracy',
+                    cv=3,
+                    n_jobs=-1,
+                    random_state=42,
+                    verbose=1,
+                    refit=True
+                )
+                search.fit(X_trainval, y_trainval)
+                return search
+
+            search1 = runSearch(bootstrapGrid)
+            search2 = runSearch(noBootstrapGrid)
+
+            bestSearch = search1 if search1.best_score_ >= search2.best_score_ else search2
+            bestRandomParams = bestSearch.best_params_
             self.logger.info(f"Stage 1 best parameters: {bestRandomParams}")
 
             # --- Stage 2: Refined Grid around best
@@ -192,8 +235,12 @@ class RandomForest:
                 'min_samples_split': expandRange(bestRandomParams['min_samples_split'], 2, minimum=2),
                 'min_samples_leaf': expandRange(bestRandomParams['min_samples_leaf'], 1, minimum=1),
                 'max_features': [bestRandomParams['max_features']],
+                'class_weight': [bestRandomParams['class_weight']],
                 'bootstrap': [bestRandomParams['bootstrap']]
             }
+
+            if bestRandomParams['bootstrap']:
+                refinedGrid['oob_score'] = [bestRandomParams.get('oob_score', False)]
 
             gridSearch = GridSearchCV(
                 estimator=RandomForestClassifier(),
@@ -207,6 +254,8 @@ class RandomForest:
 
             gridSearch.fit(X_trainval, y_trainval)
             bestParams = gridSearch.best_params_
+            self.logger.info(f"Stage 2 best parameters: {bestParams}")
+            self.params = bestParams
 
             # Evaluate final performance on independent test set
             finalAccuracy = accuracy_score(y_test_final, gridSearch.best_estimator_.predict(X_test_final))
@@ -223,3 +272,6 @@ class RandomForest:
         except Exception as e:
             self.logger.error(f"Hyperparameter optimization failed: {e}")
             return {}
+        
+    def getModelParameters(self) -> RandomForestParams:
+       return self.params
