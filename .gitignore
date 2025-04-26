@@ -1,9 +1,17 @@
 __pycache__/
 venv/
-skills/
+models/
 .DS_Store
 *.pyc
 *.pyo
 *.pyd
 *.db
 ml2mqtt/.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+env/

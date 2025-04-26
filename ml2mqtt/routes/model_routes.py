@@ -2,41 +2,31 @@ from flask import Blueprint, render_template, request, url_for, redirect, abort,
 from typing import Dict, Any, List, Optional
 import json
 import math
-from SkillStore import SkillObservation, SensorKey
+from ModelStore import ModelObservation, SensorKey
 from classifiers.RandomForest import RandomForestParams
 from classifiers.KNNClassifier import KNNParams
 from utils.helpers import slugify
 
 model_bp = Blueprint('model', __name__)
 
-class ViewModel:
-    def __init__(self, name: str = "", params: Dict[str, Any] = None):
-        self.name: str = name
-        self.params: Dict[str, Any] = params or {}
-        self.observations: List[SkillObservation] = []
-        self.entities: List[SensorKey] = []
-        self.labels: List[str] = []
-        self.currentPage: int = 0
-        self.totalPages: int = 0
-
-def init_model_routes(skill_manager):
+def init_model_routes(model_manager):
     @model_bp.route("/")
     def home() -> str:
         models = []
-        modelMap = skill_manager.getSkills()
+        modelMap = model_manager.getModels()
         for model in modelMap:
             modelName = modelMap[model].getName()
             models.append({
                 "name": modelName,
                 "mqtt_topic": modelMap[model].getMqttTopic()
             })
-        return render_template("home.html", title="Home", active_page="home", models=models, mqtt_connected=skill_manager._mqttClient._connected)
+        return render_template("home.html", title="Home", active_page="home", models=models, mqtt_connected=model_manager._mqttClient._connected)
 
     @model_bp.route("/check-model-name")
     def checkModel() -> str:
         model_name = request.args.get("name", "").strip().lower()
         slug = slugify(model_name)
-        is_taken = skill_manager.skillExists(slug)
+        is_taken = model_manager.modelExists(slug)
         return json.dumps({"exists": is_taken})
 
     @model_bp.route("/create-model", methods=["GET", "POST"])
@@ -51,7 +41,7 @@ def init_model_routes(skill_manager):
             if mqttTopic is None:
                 abort(400, "Missing MQTT topic")
 
-            newModel = skill_manager.addSkill(modelName)
+            newModel = model_manager.addModel(modelName)
             newModel.setMqttTopic(mqttTopic)
             newModel.setDefaultValue("*", defaultValue)
             newModel.setName(modelName)
@@ -63,7 +53,7 @@ def init_model_routes(skill_manager):
 
     @model_bp.route("/delete-model/<string:modelName>/", methods=["POST"])
     def deleteModel(modelName: str) -> Response:
-        skill_manager.removeSkill(modelName)
+        model_manager.removeModel(modelName)
         return redirect(url_for("model.home"))
 
     @model_bp.route("/edit-model/<string:modelName>/<section>")
@@ -73,12 +63,22 @@ def init_model_routes(skill_manager):
         if section not in validSections:
             abort(404)
 
-        model = ViewModel(modelName)
+        class ViewModel:
+            def __init__(self):
+                self.name: str = modelName
+                self.params: Dict[str, Any] = {}
+                self.observations: List[ModelObservation] = []
+                self.entities: List[SensorKey] = []
+                self.labels: List[str] = []
+                self.currentPage: int = 0
+                self.totalPages: int = 0
+
+        model = ViewModel()
 
         if section == "observations":
             page = int(request.args.get("page", 1))
             pageSize = 50
-            allObservations = skill_manager.getSkill(modelName).getObservations()
+            allObservations = model_manager.getModel(modelName).getObservations()
             total = len(allObservations)
 
             start = (page - 1) * pageSize
@@ -87,22 +87,22 @@ def init_model_routes(skill_manager):
 
             model.observations = paginated
             model.currentPage = page
-            model.labels = skill_manager.getSkill(modelName).getLabels()
+            model.labels = model_manager.getModel(modelName).getLabels()
             model.totalPages = math.ceil(total / pageSize)
 
         elif section == "settings":
             model.params = { 
-                "accuracy": skill_manager.getSkill(modelName).getAccuracy(),
-                "observationCount": len(skill_manager.getSkill(modelName).getObservations()),
-                "modelSize": skill_manager.getSkill(modelName).getModelSize(),
-                "modelParameters": skill_manager.getSkill(modelName).getModelSettings(),
-                "labelStats": skill_manager.getSkill(modelName).getLabelStats()
+                "accuracy": model_manager.getModel(modelName).getAccuracy(),
+                "observationCount": len(model_manager.getModel(modelName).getObservations()),
+                "modelSize": model_manager.getModel(modelName).getModelSize(),
+                "modelParameters": model_manager.getModel(modelName).getModelSettings(),
+                "labelStats": model_manager.getModel(modelName).getLabelStats()
             }
         elif section == "entities":
-            model.entities = skill_manager.getSkill(modelName).getSensorKeys()
+            model.entities = model_manager.getModel(modelName).getSensorKeys()
         elif section == "mqtt":
             model.params = {
-                "mqttTopic": skill_manager.getSkill(modelName).getMqttTopic(),
+                "mqttTopic": model_manager.getModel(modelName).getMqttTopic(),
             }
 
         sectionTemplate = f"edit_model/{section}.html"
@@ -165,7 +165,7 @@ def init_model_routes(skill_manager):
             else:
                 return jsonify(success=False, error=f"Unknown model type '{modelType}'"), 400
 
-            skill_manager.getSkill(modelName).setModelSettings(settings)
+            model_manager.getModel(modelName).setModelSettings(settings)
             return jsonify(success=True)
 
         except Exception as e:
@@ -173,7 +173,7 @@ def init_model_routes(skill_manager):
 
     @model_bp.route("/edit-model/<string:modelName>/settings/autotune", methods=["POST"])
     def autoTuneModel(modelName: str) -> str:
-        skill_manager.getSkill(modelName).optimizeParameters()
+        model_manager.getModel(modelName).optimizeParameters()
         return json.dumps({"success": True})
 
     @model_bp.route("/api/model/<int:modelId>/observation/<int:observationId>/explicit", methods=["POST"])
@@ -194,7 +194,7 @@ def init_model_routes(skill_manager):
         if modelType not in ["RandomForest", "KNN"]:
             abort(404)
         model = ViewModel(modelName)
-        settings = skill_manager.getSkill(modelName).getModelSettings()
+        settings = model_manager.getModel(modelName).getModelSettings()
         
         # Initialize default parameters if they don't exist
         if "model_parameters" not in settings:

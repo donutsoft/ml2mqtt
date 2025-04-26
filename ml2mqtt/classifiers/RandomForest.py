@@ -10,7 +10,7 @@ import logging
 from typing import TypedDict, Optional, Literal, Union
 
 from typing import Optional, List, Dict, Any
-from SkillStore import SkillObservation
+from ModelStore import ModelObservation
 from sklearn.metrics import classification_report
 import random
 
@@ -47,7 +47,7 @@ class RandomForest:
         self.labelEncoder: LabelEncoder = LabelEncoder()
         self._modelTrained: bool = False
 
-    def populateDataframe(self, observations: List[SkillObservation]) -> None:
+    def populateDataframe(self, observations: List[ModelObservation]) -> None:
         data: List[Dict[str, Any]] = []
         labels: List[str] = []
 
@@ -150,7 +150,7 @@ class RandomForest:
             self.logger.error(f"Label stats generation failed: {e}")
             return None
 
-    def optimizeParameters(self, observations: List[SkillObservation]) -> Dict[str, Any]:
+    def optimizeParameters(self, observations: List[ModelObservation]) -> Dict[str, Any]:
         """
         Performs two-stage hyperparameter tuning:
         1. RandomizedSearchCV for broad exploration

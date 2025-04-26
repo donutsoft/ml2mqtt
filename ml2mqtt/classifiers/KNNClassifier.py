@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSe
 from sklearn.metrics import accuracy_score, classification_report
 import logging
 from typing import TypedDict, Optional, List, Dict, Any, Union
-from SkillStore import SkillObservation
+from ModelStore import ModelObservation
 
 # --- Define parameter schema for KNN
 class KNNParams(TypedDict):
@@ -32,7 +32,7 @@ class KNNClassifier:
         self.labelEncoder: LabelEncoder = LabelEncoder()
         self._modelTrained: bool = False
 
-    def populateDataframe(self, observations: List[SkillObservation]) -> None:
+    def populateDataframe(self, observations: List[ModelObservation]) -> None:
         data: List[Dict[str, Any]] = []
         labels: List[str] = []
 
@@ -117,7 +117,7 @@ class KNNClassifier:
             self.logger.error(f"Label stats generation failed: {e}")
             return None
 
-    def optimizeParameters(self, observations: List[SkillObservation]) -> Dict[str, Any]:
+    def optimizeParameters(self, observations: List[ModelObservation]) -> Dict[str, Any]:
         """
         Hyperparameter tuning for KNN.
         """

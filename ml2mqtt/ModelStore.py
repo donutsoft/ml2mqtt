@@ -18,25 +18,22 @@ class SensorKey:
     significance: float = field(default=0)
 
     def __post_init__(self):
-        if self.type == SkillStore.TYPE_INT:
+        if self.type == ModelStore.TYPE_INT:
            self.display_type = "int"
-        elif self.type == SkillStore.TYPE_FLOAT:
+        elif self.type == ModelStore.TYPE_FLOAT:
             self.display_type = "float"
-        elif self.type == SkillStore.TYPE_STRING:
+        elif self.type == ModelStore.TYPE_STRING:
             self.display_type = "string"
 
 
 @dataclass
-class SkillObservation:
-    time: float
-    label: str
-    sensorValues: Dict[str, Any]
-    display_time: str = field(init=False)
+class ModelObservation:
+    def __init__(self, time: int, label: str, sensorValues: Dict[str, Any]):
+        self.time = time
+        self.label = label
+        self.sensorValues = sensorValues
 
-    def __post_init__(self):
-        self.display_time = datetime.fromtimestamp(self.time).isoformat()
-
-class SkillStore:
+class ModelStore:
     TYPE_INT = 0
     TYPE_FLOAT = 1
     TYPE_STRING = 2
@@ -61,7 +58,7 @@ class SkillStore:
         self._populateStringTable()
 
         self._unknownValue = self._getSetting("unknown_value", self._unknownValue)
-        self.logger.info("SkillStore initialized with skill: %s", modelPath)
+        self.logger.info("ModelStore initialized with model: %s", modelPath)
 
     def _createTables(self) -> None:
         with self.lock, self._db:
@@ -171,9 +168,9 @@ class SkillStore:
             self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time.time(), label, packed))
             self._db.commit()
 
-    def getObservations(self) -> List[SkillObservation]:
+    def getObservations(self) -> List[ModelObservation]:
         self._cursor.execute("SELECT time, label, data FROM Observations ORDER BY time DESC")
-        observations: List[SkillObservation] = []
+        observations: List[ModelObservation] = []
 
         for timeVal, label, data in self._cursor.fetchall():
             formatStr = self._generateFormatString(len(data))
@@ -182,7 +179,7 @@ class SkillStore:
                 sensor.name: self._getValue(sensor, unpacked[i] if i < len(unpacked) else sensor.default_value)
                 for i, sensor in enumerate(self._sensorKeys)
             }
-            observations.append(SkillObservation(timeVal, label, sensorValues))
+            observations.append(ModelObservation(timeVal, label, sensorValues))
         return observations
 
     def setDefaultValue(self, sensorName: str, value: Any) -> None:
