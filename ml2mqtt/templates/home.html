@@ -4,30 +4,30 @@
 <h2>My Models</h2>
 
 {% if not mqtt_connected %}
-<div style="background-color: #a94442; color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+<div class="error-message">
   <strong>⚠️ MQTT Connection Error</strong>
-  <p style="margin: 0.5rem 0 0 0;">Unable to connect to MQTT server. Please check your MQTT configuration in the Home Assistant addon config and restart the addon</p>
+  <p>Unable to connect to MQTT server. Please check your MQTT configuration in the Home Assistant addon config and restart the addon</p>
 </div>
 {% endif %}
 
 {% if models %}
-<table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
+<table class="table">
     <thead>
-      <tr style="background-color: #1f2d3a;">
-        <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">Model Name</th>
-        <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">MQTT Topic</th>
-        <th style="text-align: center; padding: 0.75rem; border-bottom: 1px solid #2c3e50;">Actions</th>
+      <tr>
+        <th>Model Name</th>
+        <th>MQTT Topic</th>
+        <th style="text-align: center;">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for model in models %}
-      <tr style="border-bottom: 1px solid #2c3e50;">
-        <td style="padding: 0.75rem;">{{ model.name }}</td>
-        <td style="padding: 0.75rem;">{{ model.mqtt_topic }}</td>
-        <td style="padding: 0.75rem; text-align: center;">
-          <div style="display: flex; justify-content: center; gap: 2rem;">
-            <a href="{{ url_for('model.editModel', modelName=model.name, section='settings') }}" style="color: #00aaff;">Edit</a>
-            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ url_for('model.deleteModel', modelName=model.name) }}')" style="color: #ff4d4d;">Delete</a>
+      <tr>
+        <td>{{ model.name }}</td>
+        <td>{{ model.mqtt_topic }}</td>
+        <td style="text-align: center;">
+          <div class="flex flex-center gap-2">
+            <a href="{{ url_for('model.editModel', modelName=model.name, section='settings') }}" class="link">Edit</a>
+            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ url_for('model.deleteModel', modelName=model.name) }}')" style="color: #ff4d4d; text-decoration: none;">Delete</a>
           </div>
         </td>
       </tr>
@@ -54,7 +54,7 @@
 
 {% else %}
   <p style="margin-top: 2rem; font-size: 1.1rem; color: #c0c8d6;">
-    🐬 You haven't added any models yet. <a href="{{ url_for('model.createModel') }}" style="color: #00aaff;">Add one now</a>.
+    🐬 You haven't added any models yet. <a href="{{ url_for('model.createModel') }}" class="link">Add one now</a>.
   </p>
 {% endif %}
 

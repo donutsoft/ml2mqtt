@@ -1,8 +1,8 @@
-<div class="formField">
+<div class="form-group">
   <label>Number of Neighbors</label>
   <input type="number" name="nNeighbors" value="{{ model.params.modelParameters.model_parameters.KNN.n_neighbors }}">
 </div>
-<div class="formField">
+<div class="form-group">
   <label>Weight Function</label>
   <select name="weights" class="styledSelect">
     {% set selected = model.params.modelParameters.model_parameters.KNN.weights or 'uniform' %}
@@ -10,7 +10,7 @@
     <option value="distance" {% if selected == 'distance' %}selected{% endif %}>Distance</option>
   </select>
 </div>
-<div class="formField">
+<div class="form-group">
   <label>Distance Metric</label>
   <select name="metric" class="styledSelect">
     {% set selected = model.params.modelParameters.model_parameters.KNN.metric or 'minkowski' %}

@@ -1,26 +1,26 @@
-<div class="settingsGroup">
+<div class="settings-group">
     <h2>Model Summary</h2>
     <h4 class="subheader">Model: {{ model.name }}</h4>
   
-    <div class="statsGrid">
-      <div class="statCard">
+    <div class="stats-grid">
+      <div class="card">
         <h3>Accuracy</h3>
         <p>{{ model.params.accuracy | round(4) if model.params.accuracy is not none else "Not Available" }}</p>
       </div>
   
-      <div class="statCard">
+      <div class="card">
         <h3>Observations</h3>
         <p>{{ model.params.observationCount }}</p>
       </div>
   
-      <div class="statCard">
+      <div class="card">
         <h3>Model Size</h3>
         <p id="modelSize" data-bytes="{{ model.params.modelSize }}"></p>
       </div>
     </div>
     {% if model.params.labelStats %}
-    <h3 style="margin-top: 2rem;">Label Statistics</h3>
-    <table class="featureTable">
+    <h3 class="section-title">Label Statistics</h3>
+    <table class="table">
         <thead>
         <tr>
             <th>Label</th>
@@ -39,8 +39,7 @@
             <td>{{ stats.precision }}</td>
             <td>{{ stats.recall }}</td>
             <td>{{ stats.f1 }}</td>
-            <td><button onclick="deleteLabel('{{ model.name }}', '{{ label }}')"
-              style="background-color: transparent; border: none; color: #ff4d4d; cursor: pointer;">Delete</button></td>
+            <td><button onclick="deleteLabel('{{ model.name }}', '{{ label }}')" class="btn-danger">Delete</button></td>
             </tr>
         {% endfor %}
         </tbody>
@@ -74,29 +73,29 @@
   </script>
   
 <style>
-    .featureTable {
+    .table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
 }
 
-.featureTable th,
-.featureTable td {
+.table th,
+.table td {
   padding: 10px;
   text-align: left;
   border-bottom: 1px solid #2c3e50;
 }
 
-.featureTable th {
+.table th {
   background-color: #253545;
   font-weight: 600;
   color: #cdd9e5;
 }
 
-.featureTable tr:hover {
+.table tr:hover {
   background-color: #1e2d3a;
 }
-    .statsGrid {
+    .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
@@ -104,12 +103,12 @@
     }
 
     @media (max-width: 768px) {
-  .statsGrid {
+  .stats-grid {
     grid-template-columns: 1fr;
   }
 }
 
-  .statCard {
+  .card {
     background-color: #1a2735;
     border: 1px solid #2c3e50;
     border-radius: 8px;
@@ -117,15 +116,20 @@
     text-align: center;
   }
 
-  .statCard h3 {
+  .card h3 {
     font-size: 1rem;
     color: #c8d4e3;
     margin-bottom: 0.5rem;
   }
 
-  .statCard p {
+  .card p {
     font-size: 1.25rem;
     color: white;
     margin: 0;
   }
+
+.section-title {
+  margin-top: 2rem;
+  color: #c8d4e3;
+}
 </style>

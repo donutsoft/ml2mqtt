@@ -4,23 +4,23 @@
 <h2>Create New Model</h2>
 
 <form method="POST" action="{{ url_for('model.createModel') }}">
-    <div>
+    <div class="form-group">
         <label for="model_name">Model Name</label>
         <input type="text" id="model_name" name="model_name" placeholder="e.g., AliceLocation" required>
-        <small id="model_status" style="font-size: 0.9rem; display: block; margin-top: 0.25rem;"></small>
+        <small id="model_status"></small>
     </div>
 
-    <div>
+    <div class="form-group">
         <label for="default_value">Unavailable sensor fallback value</label>
         <input type="number" id="default_value" name="default_value" value="9999" step="any">
     </div>
 
-    <div>
+    <div class="form-group">
         <label for="mqtt_topic">MQTT Topic</label>
         <input type="text" id="mqtt_topic" name="mqtt_topic" placeholder="Auto-generated or edit manually">
     </div>
 
-    <button type="submit" id="submit_btn">Create Model</button>
+    <button type="submit" id="submit_btn" class="btn btn-primary">Create Model</button>
 </form>
 
 <script>

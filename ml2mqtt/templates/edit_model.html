@@ -1,31 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div style="display: flex; gap: 2rem;">
+<div class="flex gap-2">
   <!-- Sidebar -->
-  <aside style="width: 200px;">
-    <nav style="display: flex; flex-direction: column; gap: 1rem; margin-top:114px;
-  background: #1a2735;
-  padding: 1rem;
-  border: 1px solid #2c3e50;">
+  <aside class="sidebar">
+    <nav class="card menu">
       <a href="{{ url_for('model.editModel', modelName=model.name, section='settings') }}"
-         class="menuLink {% if activeSection == 'settings' %}active{% endif %}">Model</a>
+         class="menu-link {% if activeSection == 'settings' %}active{% endif %}">Model</a>
       <a href="{{ url_for('model.editModel', modelName=model.name, section='entities') }}"
-         class="menuLink {% if activeSection == 'entities' %}active{% endif %}">Entities</a>
+         class="menu-link {% if activeSection == 'entities' %}active{% endif %}">Entities</a>
       <a href="{{ url_for('model.editModel', modelName=model.name, section='observations') }}"
-         class="menuLink {% if activeSection == 'observations' %}active{% endif %}">Observations</a>
+         class="menu-link {% if activeSection == 'observations' %}active{% endif %}">Observations</a>
       <a href="{{ url_for('model.editModel', modelName=model.name, section='preprocessors') }}"
-         class="menuLink {% if activeSection == 'preprocessors' %}active{% endif %}">Preprocessors</a>
+         class="menu-link {% if activeSection == 'preprocessors' %}active{% endif %}">Preprocessors</a>
       <a href="{{ url_for('model.editModel', modelName=model.name, section='postprocessors') }}"
-         class="menuLink {% if activeSection == 'postprocessors' %}active{% endif %}">Postprocessors</a>
+         class="menu-link {% if activeSection == 'postprocessors' %}active{% endif %}">Postprocessors</a>
       <a href="{{ url_for('model.editModel', modelName=model.name, section='mqtt') }}"
-         class="menuLink {% if activeSection == 'mqtt' %}active{% endif %}">MQTT</a>
-
-      </nav>
+         class="menu-link {% if activeSection == 'mqtt' %}active{% endif %}">MQTT</a>
+    </nav>
   </aside>
 
   <!-- Main Content -->
-  <section style="flex-grow: 1;">
+  <section class="main-content">
     {% include sectionTemplate %}
   </section>
 </div>
