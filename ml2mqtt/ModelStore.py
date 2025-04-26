@@ -10,7 +10,7 @@ from pathlib import Path
 import json
 
 @dataclass
-class SensorKey:
+class EntityKey:
     name: str
     type: int
     default_value: Any
@@ -70,11 +70,11 @@ class ModelStore:
             self._db.commit()
 
     def _populateSensors(self) -> None:
-        self._sensorKeys: List[SensorKey] = []
+        self._entityKeys: List[EntityKey] = []
         for name, type_, default_blob in self._cursor.execute("SELECT name, type, default_value FROM SensorKeys"):
             default_value = struct.unpack(self.TYPE_FORMATS[type_], default_blob)[0]
-            self._sensorKeys.append(SensorKey(name, type_, default_value))
-        self._sensorKeySet: Set[str] = set(sk.name for sk in self._sensorKeys)
+            self._entityKeys.append(EntityKey(name, type_, default_value))
+        self._entityKeySet: Set[str] = set(sk.name for sk in self._entityKeys)
 
     def _populateStringTable(self) -> None:
         self._stringTable: Dict[str, int] = dict((row[1], row[0]) for row in self._cursor.execute("SELECT ROWID, name FROM StringTable"))
@@ -111,16 +111,16 @@ class ModelStore:
             return float(variable)
         raise ValueError(f"Unsupported type: {variable}")
 
-    def _getValue(self, sensorKey: SensorKey, value: Any) -> Any:
-        return self._reverseStringTable[value] if sensorKey.type == self.TYPE_STRING else value
+    def _getValue(self, entityKey: EntityKey, value: Any) -> Any:
+        return self._reverseStringTable[value] if entityKey.type == self.TYPE_STRING else value
 
     def _generateFormatString(self, size: int = -1) -> str:
         formatStr = ""
         currentSize = 0
-        for sensorKey in self._sensorKeys:
+        for entityKey in self._entityKeys:
             if 0 < size <= currentSize:
                 break
-            formatStr += self.TYPE_FORMATS[sensorKey.type]
+            formatStr += self.TYPE_FORMATS[entityKey.type]
             currentSize += 4
         return formatStr
 
@@ -132,36 +132,36 @@ class ModelStore:
             try:
                 self._db.execute("INSERT INTO SensorKeys (name, type, default_value) VALUES (?, ?, ?)", (name, sensorType, packedDefault))
                 self._db.commit()
-                self._sensorKeys.append(SensorKey(name, sensorType, unknownValue))
-                self._sensorKeySet.add(name)
+                self._entityKeys.append(EntityKey(name, sensorType, unknownValue))
+                self._entityKeySet.add(name)
             except sqlite3.IntegrityError:
                 pass
 
     def sortEntityValues(self, entityMap: Dict[str, Any], forTraining: bool) -> Dict[str, Any]:
         values: Dict[str, Any] = {}
         remaining = set(entityMap.keys())
-        # Filter entity values based on known sensor keys
-        for sensor in self._sensorKeys:
-            val = entityMap.get(sensor.name, sensor.default_value)
+        # Filter entity values based on known entity keys
+        for entity in self._entityKeys:
+            val = entityMap.get(entity.name, entity.default_value)
             if val in ("unknown", "unavailable"):
-                val = sensor.default_value
-            values[sensor.name] = self._getDbValue(val)
-            remaining.discard(sensor.name)
+                val = entity.default_value
+            values[entity.name] = self._getDbValue(val)
+            remaining.discard(entity.name)
 
         if forTraining:
             for key in remaining:
                 self._addSensorType(key, entityMap[key])
-                values[sensor.name] = self._getDbValue(entityMap[key])
+                values[entity.name] = self._getDbValue(entityMap[key])
 
         return values
 
     def addObservation(self, label: str, sensors: Dict[str, Any]) -> None:
         for sensor in sensors:
-            if sensor not in self._sensorKeySet:
+            if sensor not in self._entityKeySet:
                 self._addSensorType(sensor, sensors[sensor])
 
         formatStr = self._generateFormatString()
-        values = [self._getDbValue(sensors.get(sensor.name, sensor.default_value)) for sensor in self._sensorKeys]
+        values = [self._getDbValue(sensors.get(entity.name, entity.default_value)) for entity in self._entityKeys]
         packed = struct.pack(formatStr, *values)
 
         with self.lock, self._db:
@@ -176,8 +176,8 @@ class ModelStore:
             formatStr = self._generateFormatString(len(data))
             unpacked = struct.unpack(formatStr, data)
             sensorValues = {
-                sensor.name: self._getValue(sensor, unpacked[i] if i < len(unpacked) else sensor.default_value)
-                for i, sensor in enumerate(self._sensorKeys)
+                entity.name: self._getValue(entity, unpacked[i] if i < len(unpacked) else entity.default_value)
+                for i, entity in enumerate(self._entityKeys)
             }
             observations.append(ModelObservation(timeVal, label, sensorValues))
         return observations
@@ -187,20 +187,20 @@ class ModelStore:
             self._saveSetting("unknown_value", value)
             return
 
-        if sensorName not in self._sensorKeySet:
+        if sensorName not in self._entityKeySet:
             raise ValueError("Sensor not found")
 
-        sensor = next(s for s in self._sensorKeys if s.name == sensorName)
-        if self._getType(value) != sensor.type:
+        entity = next(s for s in self._entityKeys if s.name == sensorName)
+        if self._getType(value) != entity.type:
             raise ValueError("Type mismatch")
 
-        packed = struct.pack(self.TYPE_FORMATS[sensor.type], self._getDbValue(value))
+        packed = struct.pack(self.TYPE_FORMATS[entity.type], self._getDbValue(value))
         with self.lock, self._db:
             self._db.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (packed, sensorName))
             self._db.commit()
 
-    def getSensorKeys(self):
-        return self._sensorKeys
+    def getEntityKeys(self):
+        return self._entityKeys
     
     def getModelSize(self):
         return Path(self.modelPath).stat().st_size

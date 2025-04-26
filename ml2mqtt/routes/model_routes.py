@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, url_for, redirect, abort,
 from typing import Dict, Any, List, Optional
 import json
 import math
-from ModelStore import ModelObservation, SensorKey
+from ModelStore import ModelObservation, EntityKey
 from classifiers.RandomForest import RandomForestParams
 from classifiers.KNNClassifier import KNNParams
 from utils.helpers import slugify
@@ -68,7 +68,7 @@ def init_model_routes(model_manager):
                 self.name: str = modelName
                 self.params: Dict[str, Any] = {}
                 self.observations: List[ModelObservation] = []
-                self.entities: List[SensorKey] = []
+                self.entities: List[EntityKey] = []
                 self.labels: List[str] = []
                 self.currentPage: int = 0
                 self.totalPages: int = 0
@@ -99,7 +99,7 @@ def init_model_routes(model_manager):
                 "labelStats": model_manager.getModel(modelName).getLabelStats()
             }
         elif section == "entities":
-            model.entities = model_manager.getModel(modelName).getSensorKeys()
+            model.entities = model_manager.getModel(modelName).getEntityKeys()
         elif section == "mqtt":
             model.params = {
                 "mqttTopic": model_manager.getModel(modelName).getMqttTopic(),

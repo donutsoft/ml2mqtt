@@ -2,7 +2,7 @@ import logging
 import json
 from typing import Any, Dict, List, Optional, Union
 
-from ModelStore import ModelStore, ModelObservation, SensorKey
+from ModelStore import ModelStore, ModelObservation, EntityKey
 from classifiers.RandomForest import RandomForest, RandomForestParams
 from classifiers.KNNClassifier import KNNClassifier, KNNParams
 from MqttClient import MqttClient
@@ -49,9 +49,9 @@ class ModelService:
         observations = self._modelstore.getObservations()
         self._model.populateDataframe(observations)
 
-    def getSensorKeys(self) -> List[SensorKey]:
+    def getEntityKeys(self) -> List[EntityKey]:
         features = self._model.getFeatureImportance() or {}
-        entities = self._modelstore.getSensorKeys()
+        entities = self._modelstore.getEntityKeys()
         for entity in entities:
             entity.significance = features.get(entity.name, 0.0)
         return entities
