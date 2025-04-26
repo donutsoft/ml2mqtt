@@ -109,16 +109,28 @@
   }
 
   async function deleteObservation(modelName, obsTime) {
-    if (!confirm("Delete this observation?")) return;
+    if (!confirm("Are you sure you want to delete this observation?")) return;
 
-    const res = await fetch(`/api/model/${modelName}/observation/${obsTime}/delete`, {
-      method: "POST"
-    });
+    try {
+      const res = await fetch(`/api/model/${modelName}/observation/${obsTime}/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
 
-    if (res.ok) {
-      document.getElementById(`observationRow-${obsTime}`).remove();
-    } else {
-      alert("Failed to delete observation.");
+      if (res.ok) {
+        const row = document.getElementById(`observationRow-${obsTime}`);
+        if (row) {
+          row.remove();
+          showToast("Observation deleted successfully");
+        }
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Failed to delete observation", true);
+      }
+    } catch (error) {
+      showToast("An error occurred while deleting the observation", true);
     }
   }
 </script>

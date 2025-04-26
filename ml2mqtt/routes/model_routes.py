@@ -185,9 +185,13 @@ def init_model_routes(model_manager):
         isExplicit = data.get("explicitMatch", False)
         return json.dumps({"success": True})
 
-    @model_bp.route("/api/model/<int:modelId>/observation/<int:observationId>/delete", methods=["POST"])
-    def apiDeleteObservation(modelId: int, observationId: int) -> str:
-        return json.dumps({"success": True})
+    @model_bp.route("/api/model/<string:modelName>/observation/<float:observationTime>/delete", methods=["POST"])
+    def apiDeleteObservation(modelName: str, observationTime: float) -> str:
+        try:
+            model_manager.getModel(modelName).deleteObservation(observationTime)
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @model_bp.route("/edit-model/<string:modelName>/model-settings/<string:modelType>")
     def getModelSettingsTemplate(modelName: str, modelType: str) -> str:
