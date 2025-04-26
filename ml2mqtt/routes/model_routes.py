@@ -9,6 +9,16 @@ from utils.helpers import slugify
 
 model_bp = Blueprint('model', __name__)
 
+class ViewModel:
+    def __init__(self, name: str = "", params: Dict[str, Any] = None):
+        self.name: str = name
+        self.params: Dict[str, Any] = params or {}
+        self.observations: List[SkillObservation] = []
+        self.entities: List[SensorKey] = []
+        self.labels: List[str] = []
+        self.currentPage: int = 0
+        self.totalPages: int = 0
+
 def init_model_routes(skill_manager):
     @model_bp.route("/")
     def home() -> str:
@@ -63,17 +73,7 @@ def init_model_routes(skill_manager):
         if section not in validSections:
             abort(404)
 
-        class ViewModel:
-            def __init__(self):
-                self.name: str = modelName
-                self.params: Dict[str, Any] = {}
-                self.observations: List[SkillObservation] = []
-                self.entities: List[SensorKey] = []
-                self.labels: List[str] = []
-                self.currentPage: int = 0
-                self.totalPages: int = 0
-
-        model = ViewModel()
+        model = ViewModel(modelName)
 
         if section == "observations":
             page = int(request.args.get("page", 1))
@@ -188,5 +188,32 @@ def init_model_routes(skill_manager):
     @model_bp.route("/api/model/<int:modelId>/observation/<int:observationId>/delete", methods=["POST"])
     def apiDeleteObservation(modelId: int, observationId: int) -> str:
         return json.dumps({"success": True})
+
+    @model_bp.route("/edit-model/<string:modelName>/model-settings/<string:modelType>")
+    def getModelSettingsTemplate(modelName: str, modelType: str) -> str:
+        if modelType not in ["RandomForest", "KNN"]:
+            abort(404)
+        model = ViewModel(modelName)
+        settings = skill_manager.getSkill(modelName).getModelSettings()
+        
+        # Initialize default parameters if they don't exist
+        if "model_parameters" not in settings:
+            settings["model_parameters"] = {}
+        
+        if modelType == "KNN":
+            if "KNN" not in settings["model_parameters"]:
+                settings["model_parameters"]["KNN"] = {
+                    "n_neighbors": 5,
+                    "weights": "uniform",
+                    "metric": "minkowski"
+                }
+        
+        model.params = {
+            "modelParameters": {
+                "model_type": modelType,
+                "model_parameters": settings["model_parameters"]
+            }
+        }
+        return render_template(f"edit_model/partials/model_settings/{modelType.lower()}.html", model=model)
 
     return model_bp 
