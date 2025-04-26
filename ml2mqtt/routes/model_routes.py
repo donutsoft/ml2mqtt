@@ -20,7 +20,7 @@ def init_model_routes(skill_manager):
                 "name": modelName,
                 "mqtt_topic": modelMap[model].getMqttTopic()
             })
-        return render_template("home.html", title="Home", active_page="home", models=models)
+        return render_template("home.html", title="Home", active_page="home", models=models, mqtt_connected=skill_manager._mqttClient._connected)
 
     @model_bp.route("/check-model-name")
     def checkModel() -> str:

@@ -3,6 +3,13 @@
 
 <h2>My Models</h2>
 
+{% if not mqtt_connected %}
+<div style="background-color: #a94442; color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+  <strong>⚠️ MQTT Connection Error</strong>
+  <p style="margin: 0.5rem 0 0 0;">Unable to connect to MQTT server. Please check your MQTT configuration in the Home Assistant addon config and restart the addon</p>
+</div>
+{% endif %}
+
 {% if models %}
 <table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
     <thead>
