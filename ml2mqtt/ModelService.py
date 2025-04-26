@@ -136,6 +136,18 @@ class ModelService:
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
         return self._model.getLabelStats()
 
+    def deleteObservationsByLabel(self, label: str) -> None:
+        """Delete all observations with the given label."""
+        self._modelstore.deleteObservationsByLabel(label)
+        # Rebuild the model after deletion
+        self._populateModel()
+
+    def deleteObservation(self, time: int) -> None:
+        """Delete an observation by its timestamp."""
+        self._modelstore.deleteObservation(time)
+        # Rebuild the model after deletion
+        self._populateModel()
+
     def optimizeParameters(self) -> None:
         self._model.optimizeParameters(self._modelstore.getObservations())
         self._allParams[self._modelType] = self._model.getModelParameters()

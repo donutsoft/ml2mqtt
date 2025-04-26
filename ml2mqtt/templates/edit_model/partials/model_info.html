@@ -63,10 +63,10 @@
     function deleteLabel(modelName, label) {
       const confirmMsg = `Are you sure you want to delete the label "${label}"? This action cannot be undone.`;
       if (confirm(confirmMsg)) {
-        const form = document.getElementById('deleteForm');
-        const input = document.getElementById('deleteSkillId');
-        input.value = label;
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = `/delete-label/${modelName}/${label}`;
+        document.body.appendChild(form);
         form.submit();
       }
     }

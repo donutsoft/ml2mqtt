@@ -239,6 +239,18 @@ class ModelStore:
     def getLabels(self) -> List[str]:
         return [row[0] for row in self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")]
 
+    def deleteObservationsByLabel(self, label: str) -> None:
+        """Delete all observations with the given label directly from the database."""
+        with self.lock, self._db:
+            self._db.execute("DELETE FROM Observations WHERE label = ?", (label,))
+            self._db.commit()
+
+    def deleteObservation(self, time: int) -> None:
+        """Delete an observation by its timestamp."""
+        with self.lock, self._db:
+            self._db.execute("DELETE FROM Observations WHERE time = ?", (time,))
+            self._db.commit()
+
     def deleteEntity(self, entityName: str) -> None:
         if entityName not in self._entityKeySet:
             raise ValueError("Entity not found")

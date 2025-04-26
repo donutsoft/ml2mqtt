@@ -226,4 +226,12 @@ def init_model_routes(model_manager):
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
 
+    @model_bp.route("/delete-label/<string:modelName>/<string:label>", methods=["POST"])
+    def deleteLabel(modelName: str, label: str) -> Response:
+        try:
+            model_manager.getModel(modelName).deleteObservationsByLabel(label)
+            return redirect(url_for("model.editModel", modelName=modelName, section="settings"))
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     return model_bp 
