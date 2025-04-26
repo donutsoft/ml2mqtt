@@ -19,8 +19,8 @@
         <td style="padding: 0.75rem;">{{ model.mqtt_topic }}</td>
         <td style="padding: 0.75rem; text-align: center;">
           <div style="display: flex; justify-content: center; gap: 2rem;">
-            <a href="{{ url_for('editModel', modelName=model.name, section='settings') }}" style="color: #00aaff;">Edit</a>
-            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ url_for('deleteModel', modelName=model.name) }}')" style="color: #ff4d4d;">Delete</a>
+            <a href="{{ url_for('model.editModel', modelName=model.name, section='settings') }}" style="color: #00aaff;">Edit</a>
+            <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ url_for('model.deleteModel', modelName=model.name) }}')" style="color: #ff4d4d;">Delete</a>
           </div>
         </td>
       </tr>
@@ -47,7 +47,7 @@
 
 {% else %}
   <p style="margin-top: 2rem; font-size: 1.1rem; color: #c0c8d6;">
-    🐬 You haven't added any models yet. <a href="{{ url_for('createModel') }}" style="color: #00aaff;">Add one now</a>.
+    🐬 You haven't added any models yet. <a href="{{ url_for('model.createModel') }}" style="color: #00aaff;">Add one now</a>.
   </p>
 {% endif %}
 

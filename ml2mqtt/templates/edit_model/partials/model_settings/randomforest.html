@@ -1,23 +1,23 @@
 <div class="formField">
   <label>Number of Trees</label>
-  <input type="number" name="nEstimators" value="{{ model.params.modelParameters.model_parameters.RandomForest.n_estimators }}">
+  <input type="number" name="nEstimators" value="{{ model.params.modelParameters.model_parameters.RandomForest.n_estimators if model.params.modelParameters.model_parameters.RandomForest is defined else 100 }}">
 </div>
 <div class="formField">
   <label>Maximum Tree Depth</label>
-  <input type="number" name="maxDepth" value="{{ model.params.modelParameters.model_parameters.RandomForest.max_depth }}">
+  <input type="number" name="maxDepth" value="{{ model.params.modelParameters.model_parameters.RandomForest.max_depth if model.params.modelParameters.model_parameters.RandomForest is defined else '' }}">
 </div>
 <div class="formField">
   <label>Minimum Samples to Split</label>
-  <input type="number" name="minSamplesSplit" value="{{ model.params.modelParameters.model_parameters.RandomForest.min_samples_split }}">
+  <input type="number" name="minSamplesSplit" value="{{ model.params.modelParameters.model_parameters.RandomForest.min_samples_split if model.params.modelParameters.model_parameters.RandomForest is defined else 2 }}">
 </div>
 <div class="formField">
   <label>Minimum Samples per Leaf</label>
-  <input type="number" name="minSamplesLeaf" value="{{ model.params.modelParameters.model_parameters.RandomForest.min_samples_leaf }}">
+  <input type="number" name="minSamplesLeaf" value="{{ model.params.modelParameters.model_parameters.RandomForest.min_samples_leaf if model.params.modelParameters.model_parameters.RandomForest is defined else 1 }}">
 </div>
 <div class="formField">
   <label>Max Features Per Split</label>
   <select name="maxFeatures" class="styledSelect">
-    {% set selected = model.params.modelParameters.model_parameters.RandomForest.max_features or 'sqrt' %}
+    {% set selected = model.params.modelParameters.model_parameters.RandomForest.max_features if model.params.modelParameters.model_parameters.RandomForest is defined else 'sqrt' %}
     <option value="sqrt" {% if selected == 'sqrt' %}selected{% endif %}>Square Root (sqrt)</option>
     <option value="log2" {% if selected == 'log2' %}selected{% endif %}>Log Base 2 (log2)</option>
     <option value="None" {% if selected == 'None' %}selected{% endif %}>All Features</option>
@@ -26,7 +26,7 @@
 <div class="formField">
   <label>Class Weight</label>
   <select name="classWeight" class="styledSelect">
-    {% set selected = model.params.modelParameters.model_parameters.RandomForest.class_weight or 'None' %}
+    {% set selected = model.params.modelParameters.model_parameters.RandomForest.class_weight if model.params.modelParameters.model_parameters.RandomForest is defined else 'None' %}
     <option value="None" {% if selected == 'None' %}selected{% endif %}>None</option>
     <option value="balanced" {% if selected == 'balanced' %}selected{% endif %}>Balanced</option>
     <option value="balanced_subsample" {% if selected == 'balanced_subsample' %}selected{% endif %}>Balanced Subsample</option>
@@ -38,18 +38,18 @@
   </div>
   <div class="toggleColumn">
     <label class="switch">
-      <input type="checkbox" id="bootstrap" name="bootstrap" {% if model.params.modelParameters.model_parameters.RandomForest.bootstrap != False %}checked{% endif %} onchange="toggleOobField()">
+      <input type="checkbox" id="bootstrap" name="bootstrap" {% if model.params.modelParameters.model_parameters.RandomForest is defined and model.params.modelParameters.model_parameters.RandomForest.bootstrap != False %}checked{% endif %} onchange="toggleOobField()">
       <span class="slider"></span>
     </label>
   </div>
 </div>
-<div class="formField formFieldRow" id="oobRow" style="{% if not model.params.modelParameters.model_parameters.RandomForest.bootstrap %}display: none;{% endif %}">
+<div class="formField formFieldRow" id="oobRow" style="{% if not model.params.modelParameters.model_parameters.RandomForest is defined or not model.params.modelParameters.model_parameters.RandomForest.bootstrap %}display: none;{% endif %}">
   <div class="labelColumn">
     <label for="oobScore">Use Out-of-Bag Scoring</label>
   </div>
   <div class="toggleColumn">
     <label class="switch">
-      <input type="checkbox" id="oobScore" name="oobScore" {% if model.params.modelParameters.model_parameters.RandomForest.oob_score %}checked{% endif %}>
+      <input type="checkbox" id="oobScore" name="oobScore" {% if model.params.modelParameters.model_parameters.RandomForest is defined and model.params.modelParameters.model_parameters.RandomForest.oob_score %}checked{% endif %}>
       <span class="slider"></span>
     </label>
   </div>
@@ -101,7 +101,7 @@ async function saveClassifierSettings() {
   try {
     showToast("Saving...", false, true);
 
-    const response = await fetch("{{ url_for('updateModelSettings', modelName=model.name) }}", {
+    const response = await fetch("{{ url_for('model.updateModelSettings', modelName=model.name) }}", {
       method: "POST",
       body: formData
     });

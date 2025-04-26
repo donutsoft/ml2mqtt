@@ -1,27 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>System Logs</h2>
-<div id="logContainer">
-  <!-- Logs will be loaded here -->
+<h2>Logs</h2>
+
+<div id="logContent" style="margin-top: 1.5rem;">
+  <pre style="background-color: #1a2735; padding: 1rem; border-radius: 4px; overflow-x: auto;">
+    {{ logs }}
+  </pre>
 </div>
 
 <script>
-  async function loadLogs() {
-    try {
-      const response = await fetch('{{url_for("logsRaw")}}');
-      const html = await response.text();
-      document.getElementById("logContainer").innerHTML = html;
-    } catch (err) {
-      document.getElementById("logContainer").innerHTML = "<p style='color: red;'>Failed to load logs</p>";
-    }
+  async function refreshLogs() {
+    const response = await fetch('{{ url_for("log.logsRaw") }}');
+    const logs = await response.text();
+    document.getElementById('logContent').innerHTML = `<pre style="background-color: #1a2735; padding: 1rem; border-radius: 4px; overflow-x: auto;">${logs}</pre>`;
   }
 
-  // Initial load
-  loadLogs();
+  refreshLogs();
 
-  // Refresh every 5 seconds
-  setInterval(loadLogs, 5000);
+
+  // Refresh logs every 5 seconds
+  setInterval(refreshLogs, 5000);
 </script>
 
 {% endblock %}

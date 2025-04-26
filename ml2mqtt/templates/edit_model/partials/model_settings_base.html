@@ -15,7 +15,11 @@
   </div>
 
   <div id="advancedParams" class="manualSettings" style="display: none;">
-    {% include 'edit_model/partials/model_settings/' + model.params.modelParameters.model_type.lower() + '.html' %}
+    {% if model.params.modelParameters.model_type == 'RandomForest' %}
+      {% include 'edit_model/partials/model_settings/randomforest.html' %}
+    {% elif model.params.modelParameters.model_type == 'KNN' %}
+      {% include 'edit_model/partials/model_settings/knn.html' %}
+    {% endif %}
     
     <div style="text-align: right; margin-top: 2rem;">
       <button id="saveBtn" onclick="saveClassifierSettings()" class="btn primary">Save Settings</button>
@@ -47,7 +51,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 async function runTuningRequest() {
   try {
-    const response = await fetch("{{ url_for('autoTuneModel', modelName=model.name) }}", {
+    const response = await fetch("{{ url_for('model.autoTuneModel', modelName=model.name) }}", {
       method: "POST",
       headers: { "Content-Type": "application/json" }
     });
@@ -71,7 +75,7 @@ async function onClassifierChange() {
 
   showToast("Switching model...", false, true);
 
-  const response = await fetch("{{ url_for('updateModelSettings', modelName=model.name) }}", {
+  const response = await fetch("{{ url_for('model.updateModelSettings', modelName=model.name) }}", {
     method: "POST",
     body: formData
   });

@@ -10,15 +10,15 @@
 
 <nav>
     <div class="nav-title">
-        <a href="{{ url_for('home') }}" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+        <a href="{{ url_for('model.home') }}" style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
             <img src="{{ url_for('static', filename='images/ml2mqtt.png') }}" alt="ML2MQTT Logo" style="height: 96px;">
         </a>
       </div>
     
       <div class="nav-links">
-        <a href="{{ url_for('home') }}" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
-        <a href="{{ url_for('createModel') }}" class="{% if active_page == 'create_model' %}active{% endif %}">Add Model</a>
-        <a href="{{ url_for('logs') }}" class="{% if active_page == 'logs' %}active{% endif %}">Logs</a>
+        <a href="{{ url_for('model.home') }}" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+        <a href="{{ url_for('model.createModel') }}" class="{% if active_page == 'create_model' %}active{% endif %}">Add Model</a>
+        <a href="{{ url_for('log.logs') }}" class="{% if active_page == 'logs' %}active{% endif %}">Logs</a>
       </div>
 </nav>
   <div class="container">

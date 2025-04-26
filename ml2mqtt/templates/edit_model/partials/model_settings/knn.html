@@ -45,7 +45,7 @@ async function saveClassifierSettings() {
   try {
     showToast("Saving...", false, true);
 
-    const response = await fetch("{{ url_for('updateModelSettings', modelName=model.name) }}", {
+    const response = await fetch("{{ url_for('model.updateModelSettings', modelName=model.name) }}", {
       method: "POST",
       body: formData
     });

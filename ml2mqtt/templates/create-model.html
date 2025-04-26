@@ -3,7 +3,7 @@
 
 <h2>Create New Model</h2>
 
-<form method="POST" action="{{ url_for('createModel') }}">
+<form method="POST" action="{{ url_for('model.createModel') }}">
     <div>
         <label for="model_name">Model Name</label>
         <input type="text" id="model_name" name="model_name" placeholder="e.g., AliceLocation" required>
@@ -24,58 +24,58 @@
 </form>
 
 <script>
-    const modelInput = document.getElementById('model_name');
-    const subInput = document.getElementById('mqtt_topic');
-    const status = document.getElementById('model_status');
-    const submitBtn = document.getElementById('submit_btn');
+    const modelNameInput = document.getElementById("model_name");
+    const modelStatus = document.getElementById("model_status");
+    const submitBtn = document.getElementById("submit_btn");
+    const mqttTopicInput = document.getElementById("mqtt_topic");
 
-    let debounceTimer;
-    let slug;
-
-    modelInput.addEventListener('input', () => {
-        slug = modelInput.value
+    // Function to slugify the model name
+    function slugify(text) {
+        return text
+            .toString()
             .toLowerCase()
             .trim()
-            .replace(/[^a-z0-9]+/g, '-')    // Replace spaces and symbols with hyphens
-            .replace(/^-+|-+$/g, '');        // Trim leading/trailing hyphens
+            .replace(/\s+/g, "-")
+            .replace(/[^\w\-]+/g, "")
+            .replace(/\-\-+/g, "-");
+    }
 
-        if (!subInput.dataset.manual) {
-            subInput.value = `ml2mqtt/${slug}`;
+    // Function to check if model name exists
+    async function checkModelName(name) {
+        const slug = slugify(name);
+        const response = await fetch(`{{ url_for('model.checkModel') }}?name=${encodeURIComponent(slug)}`);
+        const data = await response.json();
+        return data.exists;
+    }
+
+    // Function to update MQTT topic
+    function updateMqttTopic() {
+        const modelName = modelNameInput.value.trim();
+        if (modelName) {
+            const slug = slugify(modelName);
+            mqttTopicInput.value = `ml2mqtt/${slug}`;
         }
+    }
 
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(async () => {
-            if (slug.length < 3) {
-                status.textContent = '';
+    // Event listeners
+    modelNameInput.addEventListener("input", async function() {
+        const name = this.value.trim();
+        if (name) {
+            const exists = await checkModelName(name);
+            if (exists) {
+                modelStatus.textContent = "This model name is already taken.";
+                modelStatus.style.color = "#ff4d4d";
                 submitBtn.disabled = true;
-                return;
+            } else {
+                modelStatus.textContent = "This model name is available.";
+                modelStatus.style.color = "#00aaff";
+                submitBtn.disabled = false;
             }
-            fetch(`{{ url_for('checkModel') }}?name=${encodeURIComponent(slug)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.exists) {
-                        status.textContent = "Model name already exists";
-                        status.style.color = "#ff4d4d";
-                        submitBtn.disabled = true;
-                    } else {
-                        status.textContent = "Model name is available";
-                        status.style.color = "#00cc66";
-                        submitBtn.disabled = false;
-                    }
-                })
-                .catch(() => {
-                    status.textContent = "Could not check model name";
-                    status.style.color = "#ffa500";
-                    submitBtn.disabled = true;
-                });
-        }, 400);
-
-        // Mark inputs as "manual" if the user overrides the auto-generated values
-        [subInput].forEach(input => {
-            input.addEventListener('input', () => {
-                input.dataset.manual = true;
-            });
-        });
+            updateMqttTopic();
+        } else {
+            modelStatus.textContent = "";
+            submitBtn.disabled = true;
+        }
     });
 
     // Initially disable the button until valid input is confirmed
