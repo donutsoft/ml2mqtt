@@ -216,4 +216,14 @@ def init_model_routes(model_manager):
         }
         return render_template(f"edit_model/partials/model_settings/{modelType.lower()}.html", model=model)
 
+    @model_bp.route("/api/model/<string:modelName>/entity/<string:entityName>/delete", methods=["POST"])
+    def deleteEntity(modelName: str, entityName: str) -> Response:
+        try:
+            model_manager.getModel(modelName).deleteEntity(entityName)
+            return jsonify({"success": True})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
+
     return model_bp 

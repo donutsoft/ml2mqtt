@@ -128,6 +128,11 @@ class ModelService:
     def getLabels(self) -> List[str]:
         return self._modelstore.getLabels()
 
+    def deleteEntity(self, entityName: str) -> None:
+        self._modelstore.deleteEntity(entityName)
+        # Rebuild the model after entity deletion
+        self._populateModel()
+
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
         return self._model.getLabelStats()
 

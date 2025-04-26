@@ -33,6 +33,10 @@ class ModelObservation:
         self.label = label
         self.sensorValues = sensorValues
 
+    @property
+    def display_time(self) -> str:
+        return datetime.fromtimestamp(self.time).strftime('%Y-%m-%d %H:%M:%S')
+
 class ModelStore:
     TYPE_INT = 0
     TYPE_FLOAT = 1
@@ -155,7 +159,7 @@ class ModelStore:
 
         return values
 
-    def addObservation(self, label: str, sensors: Dict[str, Any]) -> None:
+    def addObservation(self, label: str, sensors: Dict[str, Any], time:int = time.time()) -> None:
         for sensor in sensors:
             if sensor not in self._entityKeySet:
                 self._addSensorType(sensor, sensors[sensor])
@@ -165,7 +169,7 @@ class ModelStore:
         packed = struct.pack(formatStr, *values)
 
         with self.lock, self._db:
-            self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time.time(), label, packed))
+            self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time, label, packed))
             self._db.commit()
 
     def getObservations(self) -> List[ModelObservation]:
@@ -234,6 +238,25 @@ class ModelStore:
 
     def getLabels(self) -> List[str]:
         return [row[0] for row in self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")]
+
+    def deleteEntity(self, entityName: str) -> None:
+        if entityName not in self._entityKeySet:
+            raise ValueError("Entity not found")
+        
+        observations = self.getObservations()
+        # Remove from in-memory structures
+        self._entityKeys = [ek for ek in self._entityKeys if ek.name != entityName]
+        self._entityKeySet.remove(entityName)
+        # Delete from SensorKeys table
+
+        with self.lock, self._db:
+            self._db.execute("DELETE FROM SensorKeys WHERE name = ?", (entityName,))
+            self._db.execute("DELETE FROM Observations")
+            self._db.commit()
+        
+        for observation in observations:
+            observation.sensorValues.pop(entityName)
+            self.addObservation(observation.label, observation.sensorValues, observation.time)
 
     def close(self) -> None:
         try:
