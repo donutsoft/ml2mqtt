@@ -1,0 +1,65 @@
+<div class="formField">
+  <label>Number of Neighbors</label>
+  <input type="number" name="nNeighbors" value="{{ model.params.modelParameters.model_parameters.KNN.n_neighbors }}">
+</div>
+<div class="formField">
+  <label>Weight Function</label>
+  <select name="weights" class="styledSelect">
+    {% set selected = model.params.modelParameters.model_parameters.KNN.weights or 'uniform' %}
+    <option value="uniform" {% if selected == 'uniform' %}selected{% endif %}>Uniform</option>
+    <option value="distance" {% if selected == 'distance' %}selected{% endif %}>Distance</option>
+  </select>
+</div>
+<div class="formField">
+  <label>Distance Metric</label>
+  <select name="metric" class="styledSelect">
+    {% set selected = model.params.modelParameters.model_parameters.KNN.metric or 'minkowski' %}
+    <option value="minkowski" {% if selected == 'minkowski' %}selected{% endif %}>Minkowski</option>
+    <option value="euclidean" {% if selected == 'euclidean' %}selected{% endif %}>Euclidean</option>
+    <option value="manhattan" {% if selected == 'manhattan' %}selected{% endif %}>Manhattan</option>
+  </select>
+</div>
+
+<script>
+async function saveClassifierSettings() {
+  const saveBtn = document.getElementById("saveBtn");
+  saveBtn.disabled = true;
+
+  const formData = new FormData();
+  formData.append("modelType", "KNN");
+
+  const nNeighbors = document.querySelector('[name="nNeighbors"]');
+  const weights = document.querySelector('[name="weights"]');
+  const metric = document.querySelector('[name="metric"]');
+
+  if (!nNeighbors || !nNeighbors.value || isNaN(Number(nNeighbors.value)) || Number(nNeighbors.value) <= 0) {
+    showToast("Invalid number of neighbors", true);
+    saveBtn.disabled = false;
+    return;
+  }
+
+  formData.append("nNeighbors", nNeighbors.value);
+  formData.append("weights", weights.value);
+  formData.append("metric", metric.value);
+
+  try {
+    showToast("Saving...", false, true);
+
+    const response = await fetch("{{ url_for('updateModelSettings', modelName=model.name) }}", {
+      method: "POST",
+      body: formData
+    });
+
+    if (response.ok) {
+      localStorage.setItem("tuningComplete", "true");
+      window.location.reload();
+    } else {
+      showToast("Failed to save settings.", true);
+    }
+  } catch (err) {
+    showToast("Server error during save.", true);
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+</script> 

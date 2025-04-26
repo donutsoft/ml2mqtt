@@ -1,0 +1,121 @@
+<div class="formField">
+  <label>Number of Trees</label>
+  <input type="number" name="nEstimators" value="{{ model.params.modelParameters.model_parameters.RandomForest.n_estimators }}">
+</div>
+<div class="formField">
+  <label>Maximum Tree Depth</label>
+  <input type="number" name="maxDepth" value="{{ model.params.modelParameters.model_parameters.RandomForest.max_depth }}">
+</div>
+<div class="formField">
+  <label>Minimum Samples to Split</label>
+  <input type="number" name="minSamplesSplit" value="{{ model.params.modelParameters.model_parameters.RandomForest.min_samples_split }}">
+</div>
+<div class="formField">
+  <label>Minimum Samples per Leaf</label>
+  <input type="number" name="minSamplesLeaf" value="{{ model.params.modelParameters.model_parameters.RandomForest.min_samples_leaf }}">
+</div>
+<div class="formField">
+  <label>Max Features Per Split</label>
+  <select name="maxFeatures" class="styledSelect">
+    {% set selected = model.params.modelParameters.model_parameters.RandomForest.max_features or 'sqrt' %}
+    <option value="sqrt" {% if selected == 'sqrt' %}selected{% endif %}>Square Root (sqrt)</option>
+    <option value="log2" {% if selected == 'log2' %}selected{% endif %}>Log Base 2 (log2)</option>
+    <option value="None" {% if selected == 'None' %}selected{% endif %}>All Features</option>
+  </select>
+</div>
+<div class="formField">
+  <label>Class Weight</label>
+  <select name="classWeight" class="styledSelect">
+    {% set selected = model.params.modelParameters.model_parameters.RandomForest.class_weight or 'None' %}
+    <option value="None" {% if selected == 'None' %}selected{% endif %}>None</option>
+    <option value="balanced" {% if selected == 'balanced' %}selected{% endif %}>Balanced</option>
+    <option value="balanced_subsample" {% if selected == 'balanced_subsample' %}selected{% endif %}>Balanced Subsample</option>
+  </select>
+</div>
+<div class="formField formFieldRow">
+  <div class="labelColumn">
+    <label for="bootstrap">Use Bootstrap Samples</label>
+  </div>
+  <div class="toggleColumn">
+    <label class="switch">
+      <input type="checkbox" id="bootstrap" name="bootstrap" {% if model.params.modelParameters.model_parameters.RandomForest.bootstrap != False %}checked{% endif %} onchange="toggleOobField()">
+      <span class="slider"></span>
+    </label>
+  </div>
+</div>
+<div class="formField formFieldRow" id="oobRow" style="{% if not model.params.modelParameters.model_parameters.RandomForest.bootstrap %}display: none;{% endif %}">
+  <div class="labelColumn">
+    <label for="oobScore">Use Out-of-Bag Scoring</label>
+  </div>
+  <div class="toggleColumn">
+    <label class="switch">
+      <input type="checkbox" id="oobScore" name="oobScore" {% if model.params.modelParameters.model_parameters.RandomForest.oob_score %}checked{% endif %}>
+      <span class="slider"></span>
+    </label>
+  </div>
+</div>
+
+<script>
+function toggleOobField() {
+  const bootstrap = document.getElementById("bootstrap").checked;
+  document.getElementById("oobRow").style.display = bootstrap ? "flex" : "none";
+}
+
+async function saveClassifierSettings() {
+  const saveBtn = document.getElementById("saveBtn");
+  saveBtn.disabled = true;
+
+  const formData = new FormData();
+  formData.append("modelType", "RandomForest");
+
+  const fields = {
+    nEstimators: document.querySelector('[name="nEstimators"]'),
+    maxDepth: document.querySelector('[name="maxDepth"]'),
+    minSamplesSplit: document.querySelector('[name="minSamplesSplit"]'),
+    minSamplesLeaf: document.querySelector('[name="minSamplesLeaf"]'),
+    maxFeatures: document.querySelector('[name="maxFeatures"]'),
+    classWeight: document.querySelector('[name="classWeight"]'),
+    bootstrap: document.getElementById("bootstrap"),
+    oobScore: document.getElementById("oobScore")
+  };
+
+  const requiredNumericFields = ['nEstimators', 'minSamplesSplit', 'minSamplesLeaf'];
+  for (const name of requiredNumericFields) {
+    const field = fields[name];
+    if (!field || !field.value || isNaN(Number(field.value)) || Number(field.value) <= 0) {
+      showToast(`Invalid or missing value for ${name}`, true);
+      saveBtn.disabled = false;
+      return;
+    }
+  }
+
+  formData.append("nEstimators", fields.nEstimators.value);
+  formData.append("maxDepth", fields.maxDepth.value);
+  formData.append("minSamplesSplit", fields.minSamplesSplit.value);
+  formData.append("minSamplesLeaf", fields.minSamplesLeaf.value);
+  formData.append("maxFeatures", fields.maxFeatures.value);
+  formData.append("classWeight", fields.classWeight.value);
+  formData.append("bootstrap", fields.bootstrap.checked);
+  formData.append("oobScore", fields.oobScore.checked);
+
+  try {
+    showToast("Saving...", false, true);
+
+    const response = await fetch("{{ url_for('updateModelSettings', modelName=model.name) }}", {
+      method: "POST",
+      body: formData
+    });
+
+    if (response.ok) {
+      localStorage.setItem("tuningComplete", "true");
+      window.location.reload();
+    } else {
+      showToast("Failed to save settings.", true);
+    }
+  } catch (err) {
+    showToast("Server error during save.", true);
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+</script> 
