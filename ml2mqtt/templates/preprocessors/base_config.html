@@ -1,0 +1,12 @@
+<form class="preprocessorConfig">
+  <div class="formField">
+    <label for="entity">Target Entity</label>
+    <select name="entity" id="entity" class="styledSelect">
+      <option value="">All Entities</option>
+      {% for entity in available_entities %}
+      <option value="{{ entity }}">{{ entity }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% block additional_config %}{% endblock %}
+</form> 
