@@ -1,11 +1,23 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, ClassVar
 
 class BasePreprocessor(ABC):
     """Base class for all preprocessors."""
     
-    name: str = "base"  # Override this in subclasses
-    description: str = "Base preprocessor"  # Override this in subclasses
+    # Static metadata that must be defined by subclasses
+    id: ClassVar[str] = "base"  # Unique identifier for the preprocessor
+    description: ClassVar[str] = "Base preprocessor"  # Human-readable description
+    
+    # Static configuration schema that must be defined by subclasses
+    config_schema: ClassVar[Dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "entity": {
+                "type": "string",
+                "description": "Target entity to process (empty for all entities)"
+            }
+        }
+    }
     
     def __init__(self, entity: Optional[str] = None, **kwargs):
         """
@@ -31,28 +43,12 @@ class BasePreprocessor(ABC):
         """
         pass
     
-    @classmethod
-    def get_config_schema(cls) -> Dict[str, Any]:
-        """
-        Return JSON schema for this preprocessor's configuration.
-        Override this in subclasses to provide custom configuration schema.
-        """
-        return {
-            "type": "object",
-            "properties": {
-                "entity": {
-                    "type": "string",
-                    "description": "Target entity to process (empty for all entities)"
-                }
-            }
-        }
-    
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert preprocessor configuration to dictionary.
         """
         return {
-            "type": self.name,
+            "type": self.id,
             "entity": self.entity,
             "config": self.config
         }

@@ -3,6 +3,7 @@ import importlib
 from typing import Dict, Type
 
 from .base import BasePreprocessor
+from .PreprocessorFactory import PreprocessorFactory
 
 # Dictionary to store all available preprocessors
 preprocessors: Dict[str, Type[BasePreprocessor]] = {}
@@ -20,3 +21,9 @@ for filename in os.listdir(os.path.dirname(__file__)):
                 issubclass(attr, BasePreprocessor) and 
                 attr != BasePreprocessor):
                 preprocessors[attr.name] = attr 
+
+# Create a singleton instance of the factory
+factory = PreprocessorFactory()
+
+# Export the factory instance
+__all__ = ['factory'] 

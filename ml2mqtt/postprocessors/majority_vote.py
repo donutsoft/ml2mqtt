@@ -1,12 +1,24 @@
 from collections import deque
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, ClassVar
 from .base import BasePostprocessor
 
 class MajorityVotePostprocessor(BasePostprocessor):
     """Postprocessor that waits for N results and returns the most common label."""
     
-    name = "majority_vote"
-    description = "Waits for N results and returns the most common label"
+    id: ClassVar[str] = "majority_vote"
+    description: ClassVar[str] = "Waits for N results and returns the most common label"
+    
+    config_schema: ClassVar[Dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "window_size": {
+                "type": "integer",
+                "description": "Number of results to consider for majority voting",
+                "minimum": 1
+            }
+        },
+        "required": ["window_size"]
+    }
     
     def __init__(self, window_size: int = 5, **kwargs):
         """
@@ -45,18 +57,4 @@ class MajorityVotePostprocessor(BasePostprocessor):
         # Find the most common label
         majority_label = max(label_counts.items(), key=lambda x: x[1])[0]
         
-        return observation, majority_label
-    
-    @classmethod
-    def get_config_schema(cls) -> Dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "window_size": {
-                    "type": "integer",
-                    "description": "Number of results to consider for majority voting",
-                    "minimum": 1
-                }
-            },
-            "required": ["window_size"]
-        } 
+        return observation, majority_label 

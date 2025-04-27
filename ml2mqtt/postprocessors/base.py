@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, ClassVar
 
 class BasePostprocessor(ABC):
     """Base class for all postprocessors."""
     
-    name: str = "base"  # Override this in subclasses
-    description: str = "Base postprocessor"  # Override this in subclasses
-    template_name: str = "base_config.html"  # Override this in subclasses
+    # Static metadata that must be defined by subclasses
+    id: ClassVar[str] = "base"  # Unique identifier for the postprocessor
+    description: ClassVar[str] = "Base postprocessor"  # Human-readable description
+    
+    # Static configuration schema that must be defined by subclasses
+    config_schema: ClassVar[Dict[str, Any]] = {
+        "type": "object",
+        "properties": {}
+    }
     
     def __init__(self, **kwargs):
         """
@@ -31,23 +37,12 @@ class BasePostprocessor(ABC):
         """
         pass
     
-    @classmethod
-    def get_config_schema(cls) -> Dict[str, Any]:
-        """
-        Return JSON schema for this postprocessor's configuration.
-        Override this in subclasses to provide custom configuration schema.
-        """
-        return {
-            "type": "object",
-            "properties": {}
-        }
-    
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert postprocessor configuration to dictionary.
         """
         return {
-            "type": self.name,
+            "type": self.id,
             "config": self.config
         }
     

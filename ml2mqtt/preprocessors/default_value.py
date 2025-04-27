@@ -1,12 +1,22 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, ClassVar
 from ..ModelStore import ModelStore
 from .base import BasePreprocessor
 
 class DefaultValuePreprocessor(BasePreprocessor):
     """Replaces None values with default values from ModelStore."""
     
-    name = "default_value"
-    description = "Replaces None values with default values from ModelStore"
+    id: ClassVar[str] = "default_value"
+    description: ClassVar[str] = "Replaces None values with default values from ModelStore"
+    
+    config_schema: ClassVar[Dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "entity": {
+                "type": "string",
+                "description": "Target entity to process (empty for all entities)"
+            }
+        }
+    }
     
     def __init__(self, entity: Optional[str] = None, **kwargs):
         super().__init__(entity, **kwargs)
@@ -30,16 +40,4 @@ class DefaultValuePreprocessor(BasePreprocessor):
                 if default_value is not None:
                     result[entity] = default_value
         
-        return result
-    
-    @classmethod
-    def get_config_schema(cls) -> Dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "entity": {
-                    "type": "string",
-                    "description": "Target entity to process (empty for all entities)"
-                }
-            }
-        } 
+        return result 

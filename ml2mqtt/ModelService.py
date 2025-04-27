@@ -6,7 +6,7 @@ from ModelStore import ModelStore, ModelObservation, EntityKey
 from classifiers.RandomForest import RandomForest, RandomForestParams
 from classifiers.KNNClassifier import KNNClassifier, KNNParams
 from MqttClient import MqttClient
-from postprocessors import postprocessors
+from postprocessors.PostprocessorFactory import PostprocessorFactory
 
 DISABLED_LABEL = "disabled"
 
@@ -54,14 +54,15 @@ class ModelService:
 
     def _loadPostprocessors(self) -> None:
         """Load postprocessors from model settings."""
-        settings = self._modelstore.getDict('postprocessors') or []
+        postProcessors = self._modelstore.getPostprocessors()
         self._postprocessors = []
         
-        for postprocessor_data in settings:
-            postprocessor_type = postprocessor_data.get('type')
-            if postprocessor_type in postprocessors:
-                postprocessor_class = postprocessors[postprocessor_type]
-                self._postprocessors.append(postprocessor_class.from_dict(postprocessor_data))
+        for postprocessor_data in postProcessors:
+            try:
+                postprocessor = PostprocessorFactory.create(postprocessor_data.type, postprocessor_data.params)
+                self._postprocessors.append(postprocessor)
+            except ValueError as e:
+                self._logger.warning(f"Failed to load postprocessor: {e}")
 
     def getEntityKeys(self) -> List[EntityKey]:
         features = self._model.getFeatureImportance() or {}
@@ -207,16 +208,12 @@ class ModelService:
 
     def addPostprocessor(self, postprocessor_data: Dict[str, Any]) -> None:
         """Add a new postprocessor."""
-        postprocessor_type = postprocessor_data.get('type')
-        if postprocessor_type not in postprocessors:
-            raise ValueError(f"Unknown postprocessor type: {postprocessor_type}")
-            
-        postprocessor_class = postprocessors[postprocessor_type]
-        postprocessor = postprocessor_class.from_dict(postprocessor_data)
-        self._postprocessors.append(postprocessor)
+        #postprocessor = PostprocessorFactory.create(postprocessor_data)
+        #self._postprocessors.append(postprocessor)
         
         # Save updated postprocessors
-        self._modelstore.saveDict('postprocessors', self.getPostprocessors())
+        #self._modelstore.saveDict('postprocessors', self.getPostprocessors())
+        pass
 
     def removePostprocessor(self, index: int) -> None:
         """Remove a postprocessor by index."""

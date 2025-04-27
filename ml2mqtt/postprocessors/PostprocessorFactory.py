@@ -1,0 +1,66 @@
+import os
+import importlib
+import logging
+from typing import Dict, Any, Type, List
+
+from .base import BasePostprocessor
+
+class PostprocessorFactory:
+    """Factory for creating postprocessor instances."""
+    
+    def __init__(self):
+        self._logger = logging.getLogger("ml2mqtt")
+        self._postprocessor_types: Dict[str, Type[BasePostprocessor]] = {}
+        self._load_postprocessors()
+    
+    def _load_postprocessors(self) -> None:
+        """Dynamically load all postprocessor modules from the postprocessors directory."""
+        postprocessors_dir = os.path.dirname(__file__)
+        
+        for filename in os.listdir(postprocessors_dir):
+            if filename.endswith('.py') and not filename.startswith('__'):
+                module_name = filename[:-3]
+                try:
+                    module = importlib.import_module(f'.{module_name}', package=__name__)
+                    
+                    # Look for classes that inherit from BasePostprocessor
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        if (isinstance(attr, type) and 
+                            issubclass(attr, BasePostprocessor) and 
+                            attr != BasePostprocessor):
+                            self._postprocessor_types[attr.id] = attr
+                            self._logger.info(f"Loaded postprocessor: {attr.id}")
+                except Exception as e:
+                    self._logger.error(f"Failed to load postprocessor module {module_name}: {e}")
+    
+    def get_available_postprocessors(self) -> List[Dict[str, Any]]:
+        """Get a list of all available postprocessors with their metadata."""
+        return [
+            {
+                "id": processor.id,
+                "description": processor.description,
+                "config_schema": processor.config_schema
+            }
+            for processor in self._postprocessor_types.values()
+        ]
+    
+    def create(self, postprocessor_type: str, params: Dict[str, Any] = None) -> BasePostprocessor:
+        """
+        Create a postprocessor instance.
+        
+        Args:
+            postprocessor_type: Type of postprocessor to create
+            params: Configuration parameters for the postprocessor
+            
+        Returns:
+            Instance of the specified postprocessor
+            
+        Raises:
+            ValueError: If postprocessor type is unknown
+        """
+        if postprocessor_type not in self._postprocessor_types:
+            raise ValueError(f"Unknown postprocessor type: {postprocessor_type}")
+            
+        postprocessor_class = self._postprocessor_types[postprocessor_type]
+        return postprocessor_class(**(params or {})) 
