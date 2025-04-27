@@ -95,6 +95,7 @@ def init_model_routes(model_manager: ModelManager):
             model.totalPages = math.ceil(total / pageSize)
 
         elif section == "settings":
+            logger.info(f"Model settings: {model_manager.getModel(modelName).getModelSettings()}")
             model.params = { 
                 "accuracy": model_manager.getModel(modelName).getAccuracy(),
                 "observationCount": len(model_manager.getModel(modelName).getObservations()),
@@ -123,6 +124,17 @@ def init_model_routes(model_manager: ModelManager):
             availablePostprocessors=PostprocessorFactory().get_available_postprocessors(),
         )
 
+    @model_bp.route("/edit-model/<string:modelName>/change-model", methods=["POST"])
+    def changeModel(modelName: str) -> str:
+        try:
+            modelType = request.form.get("modelType", "RandomForest")
+            currentSettings = model_manager.getModel(modelName).getModelSettings()
+            currentSettings["model_type"] = modelType
+            model_manager.getModel(modelName).setModelSettings(currentSettings)
+            return jsonify(success=True)
+        except Exception as e:
+            return jsonify(success=False, error=str(e)), 400
+        
     @model_bp.route("/edit-model/<string:modelName>/settings/update", methods=["POST"])
     def updateModelSettings(modelName: str) -> str:
         def get_int(name: str, default: Optional[int] = None) -> Optional[int]:
@@ -143,10 +155,7 @@ def init_model_routes(model_manager: ModelManager):
         try:
             modelType = request.form.get("modelType", "RandomForest")
 
-            settings: Dict[str, Any] = {
-                "model_type": modelType,
-                "model_parameters": {}
-            }
+            settings: Dict[str, Any] = model_manager.getModel(modelName).getModelSettings()
 
             if modelType == "RandomForest":
                 rfParams: RandomForestParams = {

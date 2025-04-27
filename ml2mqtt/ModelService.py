@@ -170,9 +170,12 @@ class ModelService:
         self._populateModel()
 
     def optimizeParameters(self) -> None:
-        self._model.optimizeParameters(self._modelstore.getObservations())
-        self._allParams[self._modelType] = self._model.getModelParameters()
-        self._modelstore.saveDict("model_settings", self.getModelSettings())
+        best_params = self._model.optimizeParameters(self._modelstore.getObservations())
+
+        modelSettings = self.getModelSettings()
+        modelSettings["model_parameters"] = modelSettings.get("model_parameters", {})
+        modelSettings["model_parameters"][self._modelType] = best_params
+        self._modelstore.saveDict("model_settings", modelSettings)
 
     def getModelSettings(self) -> Dict[str, Any]:
         settings = self._modelstore.getDict('model_settings') or {}
@@ -189,12 +192,20 @@ class ModelService:
                         "class_weight": None,
                         "bootstrap": True,
                         "oob_score": False
+                    }, "KNN": {
+                        "n_neighbors": 5,
+                        "weights": "uniform",
+                        "algorithm": "auto",
+                        "leaf_size": 30,
+                        "metric": "minkowski",
+                        "p": 2
                     }
                 }
             }
         return settings
 
     def setModelSettings(self, settings: Dict[str, Any]) -> None:
+        self._logger.info(f"Setting model settings: {settings}");
         self._modelType = settings.get("model_type", "RandomForest")
         self._allParams = settings.get("model_parameters", {})
         self._modelstore.saveDict("model_settings", settings)

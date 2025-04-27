@@ -9,6 +9,22 @@
     </select>
   </div>
 
+  <!-- Learning Type Slider (under classifier) -->
+  <div class="formField" style="margin-top: 1.5rem;">
+    <label style="color: #7e8c9c;">Learning Type</label>
+    <input type="range" min="0" max="2" value="0" id="learningTypeSlider" oninput="updateLearningType()" style="width: 100%; margin-top: 0.5rem;">
+    
+    <div id="learningTypeLabels" style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.9rem;">
+      <span id="label0">Disabled</span>
+      <span id="label1">Lazy Learning</span>
+      <span id="label2">Eager Learning</span>
+    </div>
+
+    <div id="learningTypeDescription" class="subText fade-text" style="margin-top: 1rem; color: #7e8c9c;">
+      Learning is disabled. New observations will not be saved.
+    </div>
+  </div>
+
   <div class="formField buttonRow">
     <button type="submit" name="action" value="tune" class="btn small">Automatically Tune Model</button>
     <button type="button" onclick="toggleManualParams()" id="showAdvancedBtn" class="btn small">Manual Settings</button>
@@ -20,7 +36,7 @@
     {% elif model.params.modelParameters.model_type == 'KNN' %}
       {% include 'edit_model/partials/model_settings/knn.html' %}
     {% endif %}
-    
+
     <div style="text-align: right; margin-top: 2rem;">
       <button id="saveBtn" onclick="saveClassifierSettings()" class="btn primary">Save Settings</button>
     </div>
@@ -47,6 +63,7 @@ window.addEventListener("DOMContentLoaded", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     showToast("Finished!");
   }
+  updateLearningType(); // Ensure learning type labels are correct on load
 });
 
 async function runTuningRequest() {
@@ -75,7 +92,7 @@ async function onClassifierChange() {
 
   showToast("Switching model...", false, true);
 
-  const response = await fetch("{{ url_for('model.updateModelSettings', modelName=model.name) }}", {
+  const response = await fetch("{{ url_for('model.changeModel', modelName=model.name) }}", {
     method: "POST",
     body: formData
   });
@@ -111,7 +128,7 @@ function showToast(message, isError = false, animated = false) {
     dots.textContent = "";
     setTimeout(() => {
       toast.classList.remove("show");
-    }, isError ? 5000 : 10000);
+    }, isError ? 20000 : 10000);
   }
 }
 
@@ -130,6 +147,34 @@ function showManualParams(show) {
   el.style.display = show ? "block" : "none";
   if (btn) btn.textContent = show ? "Hide Manual Settings" : "Manual Settings";
 }
+
+// === Learning Type Slider logic ===
+function updateLearningType() {
+  const slider = document.getElementById('learningTypeSlider');
+  const description = document.getElementById('learningTypeDescription');
+
+  const descriptions = [
+    "Learning is disabled. New observations will not be saved.",
+    "Lazy learning enabled. A new observation will be saved only if the model prediction was wrong. (Recommended)",
+    "Eager learning enabled. All observations will be saved, even if predictions were correct. (Useful for building an initial datasets)"
+  ];
+
+  description.classList.remove("fade-in");
+  void description.offsetWidth; // trigger reflow to restart animation
+  description.textContent = descriptions[slider.value];
+  description.classList.add("fade-in");
+
+  for (let i = 0; i <= 2; i++) {
+    const label = document.getElementById(`label${i}`);
+    if (i == slider.value) {
+      label.style.fontWeight = "bold";
+      label.style.color = "#007bff"; // Light blue highlight
+    } else {
+      label.style.fontWeight = "normal";
+      label.style.color = "#7e8c9c"; // Dim color
+    }
+  }
+}
 </script>
 
 <style>
@@ -137,4 +182,20 @@ function showManualParams(show) {
   display: flex;
   gap: 1rem;
 }
-</style> 
+
+/* Subtle Fade Animation for Description */
+.fade-text {
+  transition: opacity 0.4s ease;
+  opacity: 1;
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeInAnim 0.4s forwards;
+}
+
+@keyframes fadeInAnim {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>
