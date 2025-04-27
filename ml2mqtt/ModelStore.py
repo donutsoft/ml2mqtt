@@ -1,9 +1,9 @@
 import sqlite3
 import struct
-import time
 import logging
 import threading
 from dataclasses import dataclass, field
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Union
 from pathlib import Path
@@ -186,9 +186,9 @@ class ModelStore:
 
         return values
 
-    def addObservation(self, label: str, sensors: Dict[str, Any], time: int = None) -> None:
-        if time is None:
-            time = time.time()
+    def addObservation(self, label: str, sensors: Dict[str, Any], assignedTime: float = None) -> None:
+        if assignedTime is None:
+            assignedTime = time.time()
         for sensor in sensors:
             if sensor not in self._entityKeySet:
                 self._addSensorType(sensor, sensors[sensor])
@@ -198,7 +198,7 @@ class ModelStore:
         packed = struct.pack(formatStr, *values)
 
         with self.lock, self._db:
-            self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (time, label, packed))
+            self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (assignedTime, label, packed))
             self._db.commit()
 
     def getObservations(self) -> List[ModelObservation]:
