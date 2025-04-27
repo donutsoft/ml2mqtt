@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Union
 from pathlib import Path
 import json
+from enum import Enum
 
 @dataclass
 class EntityKey:
@@ -19,12 +20,11 @@ class EntityKey:
 
     def __post_init__(self):
         if self.type == ModelStore.TYPE_INT:
-           self.display_type = "int"
+            self.display_type = "int"
         elif self.type == ModelStore.TYPE_FLOAT:
             self.display_type = "float"
         elif self.type == ModelStore.TYPE_STRING:
             self.display_type = "string"
-
 
 @dataclass
 class ModelObservation:
@@ -36,6 +36,17 @@ class ModelObservation:
     @property
     def display_time(self) -> str:
         return datetime.fromtimestamp(self.time).strftime('%Y-%m-%d %H:%M:%S')
+
+@dataclass
+class ProcessorEntry:
+    id: int
+    type: str
+    params: Dict[str, Any]
+    order: int
+
+class ProcessorType(Enum):
+    PREPROCESSOR = "Preprocessors"
+    POSTPROCESSOR = "Postprocessors"
 
 class ModelStore:
     TYPE_INT = 0
@@ -71,6 +82,22 @@ class ModelStore:
             cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label TEXT, data BLOB)")
             cursor.execute("CREATE TABLE IF NOT EXISTS StringTable (name TEXT)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Settings (name TEXT PRIMARY KEY, value)")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Preprocessors (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT,
+                    params TEXT,
+                    order_num INTEGER
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Postprocessors (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT,
+                    params TEXT,
+                    order_num INTEGER
+                )
+            """)
             self._db.commit()
 
     def _populateSensors(self) -> None:
@@ -155,11 +182,13 @@ class ModelStore:
         if forTraining:
             for key in remaining:
                 self._addSensorType(key, entityMap[key])
-                values[entity.name] = self._getDbValue(entityMap[key])
+                values[key] = self._getDbValue(entityMap[key])
 
         return values
 
-    def addObservation(self, label: str, sensors: Dict[str, Any], time:int = time.time()) -> None:
+    def addObservation(self, label: str, sensors: Dict[str, Any], time: int = None) -> None:
+        if time is None:
+            time = time.time()
         for sensor in sensors:
             if sensor not in self._entityKeySet:
                 self._addSensorType(sensor, sensors[sensor])
@@ -175,7 +204,6 @@ class ModelStore:
     def getObservations(self) -> List[ModelObservation]:
         self._cursor.execute("SELECT time, label, data FROM Observations ORDER BY time DESC")
         observations: List[ModelObservation] = []
-
         for timeVal, label, data in self._cursor.fetchall():
             formatStr = self._generateFormatString(len(data))
             unpacked = struct.unpack(formatStr, data)
@@ -205,7 +233,7 @@ class ModelStore:
 
     def getEntityKeys(self):
         return self._entityKeys
-    
+
     def getModelSize(self):
         return Path(self.modelPath).stat().st_size
 
@@ -213,16 +241,17 @@ class ModelStore:
         self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,))
         row = self._cursor.fetchone()
         return row[0] if row else default_value
-    
-    def getDict(self, name:str) -> Optional[Dict[str, Any]]:
+
+    def getDict(self, name: str) -> Optional[Dict[str, Any]]:
         return json.loads(self._getSetting(name, "{}"))
-    
+
     def saveDict(self, name: str, value: Dict[str, Any]) -> None:
         self._saveSetting(name, json.dumps(value))
-        
+
     def _saveSetting(self, name: str, value: Any) -> None:
         with self.lock, self._db:
             self._db.execute("INSERT OR REPLACE INTO Settings (name, value) VALUES (?, ?)", (name, value))
+            self._db.commit()
 
     def setMqttTopic(self, mqttTopic: str) -> None:
         self._saveSetting("mqtt_topic", mqttTopic)
@@ -240,13 +269,11 @@ class ModelStore:
         return [row[0] for row in self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")]
 
     def deleteObservationsByLabel(self, label: str) -> None:
-        """Delete all observations with the given label directly from the database."""
         with self.lock, self._db:
             self._db.execute("DELETE FROM Observations WHERE label = ?", (label,))
             self._db.commit()
 
     def deleteObservation(self, time: int) -> None:
-        """Delete an observation by its timestamp."""
         with self.lock, self._db:
             self._db.execute("DELETE FROM Observations WHERE time = ?", (time,))
             self._db.commit()
@@ -256,19 +283,75 @@ class ModelStore:
             raise ValueError("Entity not found")
         
         observations = self.getObservations()
-        # Remove from in-memory structures
         self._entityKeys = [ek for ek in self._entityKeys if ek.name != entityName]
         self._entityKeySet.remove(entityName)
-        # Delete from SensorKeys table
 
         with self.lock, self._db:
             self._db.execute("DELETE FROM SensorKeys WHERE name = ?", (entityName,))
             self._db.execute("DELETE FROM Observations")
             self._db.commit()
-        
+
         for observation in observations:
             observation.sensorValues.pop(entityName)
             self.addObservation(observation.label, observation.sensorValues, observation.time)
+
+    # -- Processor management --
+
+    def addPreprocessor(self, type_: str, params: Dict[str, Any], order: Optional[int] = None) -> None:
+        self._addProcessor(ProcessorType.PREPROCESSOR, type_, params, order)
+
+    def addPostprocessor(self, type_: str, params: Dict[str, Any], order: Optional[int] = None) -> None:
+        self._addProcessor(ProcessorType.POSTPROCESSOR, type_, params, order)
+
+    def deletePreprocessor(self, id_: int) -> None:
+        self._deleteProcessor(ProcessorType.PREPROCESSOR, id_)
+
+    def deletePostprocessor(self, id_: int) -> None:
+        self._deleteProcessor(ProcessorType.POSTPROCESSOR, id_)
+
+    def reorderPreprocessors(self, idOrderList: List[int]) -> None:
+        self._reorderProcessors(ProcessorType.PREPROCESSOR, idOrderList)
+
+    def reorderPostprocessors(self, idOrderList: List[int]) -> None:
+        self._reorderProcessors(ProcessorType.POSTPROCESSOR, idOrderList)
+
+    def _addProcessor(self, processorType: ProcessorType, type_: str, params: Dict[str, Any], order: Optional[int]) -> None:
+        table = processorType.value
+        if order is None:
+            cursor = self._db.cursor()
+            cursor.execute(f"SELECT COALESCE(MAX(order_num), 0) + 1 FROM {table}")
+            order = cursor.fetchone()[0]
+        with self.lock, self._db:
+            self._db.execute(
+                f"INSERT INTO {table} (type, params, order_num) VALUES (?, ?, ?)",
+                (type_, json.dumps(params), order)
+            )
+            self._db.commit()
+
+    def _deleteProcessor(self, processorType: ProcessorType, id_: int) -> None:
+        table = processorType.value
+        with self.lock, self._db:
+            self._db.execute(f"DELETE FROM {table} WHERE id = ?", (id_,))
+            self._db.commit()
+
+    def _reorderProcessors(self, processorType: ProcessorType, idOrderList: List[int]) -> None:
+        table = processorType.value
+        with self.lock, self._db:
+            for order, id_ in enumerate(idOrderList):
+                self._db.execute(f"UPDATE {table} SET order_num = ? WHERE id = ?", (order, id_))
+            self._db.commit()
+
+    def getPreprocessors(self) -> List[ProcessorEntry]:
+        return self._getProcessors(ProcessorType.PREPROCESSOR)
+
+    def getPostprocessors(self) -> List[ProcessorEntry]:
+        return self._getProcessors(ProcessorType.POSTPROCESSOR)
+
+    def _getProcessors(self, processorType: ProcessorType) -> List[ProcessorEntry]:
+        table = processorType.value
+        cursor = self._db.cursor()
+        cursor.execute(f"SELECT id, type, params, order_num FROM {table} ORDER BY order_num ASC")
+        return [ProcessorEntry(id=row[0], type=row[1], params=json.loads(row[2]), order=row[3]) for row in cursor.fetchall()]
 
     def close(self) -> None:
         try:
