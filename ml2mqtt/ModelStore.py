@@ -300,8 +300,9 @@ class ModelStore:
     def addPreprocessor(self, type_: str, params: Dict[str, Any], order: Optional[int] = None) -> None:
         self._addProcessor(ProcessorType.PREPROCESSOR, type_, params, order)
 
-    def addPostprocessor(self, type_: str, params: Dict[str, Any], order: Optional[int] = None) -> None:
-        self._addProcessor(ProcessorType.POSTPROCESSOR, type_, params, order)
+    def addPostprocessor(self, type_: str, params: Dict[str, Any], order: Optional[int] = None) -> int:
+        """Add a new postprocessor and return its ID."""
+        return self._addProcessor(ProcessorType.POSTPROCESSOR, type_, params, order)
 
     def deletePreprocessor(self, id_: int) -> None:
         self._deleteProcessor(ProcessorType.PREPROCESSOR, id_)
@@ -315,30 +316,32 @@ class ModelStore:
     def reorderPostprocessors(self, idOrderList: List[int]) -> None:
         self._reorderProcessors(ProcessorType.POSTPROCESSOR, idOrderList)
 
-    def _addProcessor(self, processorType: ProcessorType, type_: str, params: Dict[str, Any], order: Optional[int]) -> None:
+    def _addProcessor(self, processorType: ProcessorType, type_: str, params: Dict[str, Any], order: Optional[int]) -> int:
         table = processorType.value
         if order is None:
             cursor = self._db.cursor()
             cursor.execute(f"SELECT COALESCE(MAX(order_num), 0) + 1 FROM {table}")
             order = cursor.fetchone()[0]
         with self.lock, self._db:
-            self._db.execute(
+            cursor = self._db.cursor()
+            cursor.execute(
                 f"INSERT INTO {table} (type, params, order_num) VALUES (?, ?, ?)",
                 (type_, json.dumps(params), order)
             )
             self._db.commit()
+            return cursor.lastrowid
 
     def _deleteProcessor(self, processorType: ProcessorType, id_: int) -> None:
         table = processorType.value
         with self.lock, self._db:
-            self._db.execute(f"DELETE FROM {table} WHERE id = ?", (id_,))
+            self._db.execute(f"DELETE FROM {table} WHERE ROWID = ?", (id_,))
             self._db.commit()
 
     def _reorderProcessors(self, processorType: ProcessorType, idOrderList: List[int]) -> None:
         table = processorType.value
         with self.lock, self._db:
             for order, id_ in enumerate(idOrderList):
-                self._db.execute(f"UPDATE {table} SET order_num = ? WHERE id = ?", (order, id_))
+                self._db.execute(f"UPDATE {table} SET order_num = ? WHERE ROWID = ?", (order, id_))
             self._db.commit()
 
     def getPreprocessors(self) -> List[ProcessorEntry]:
@@ -350,7 +353,7 @@ class ModelStore:
     def _getProcessors(self, processorType: ProcessorType) -> List[ProcessorEntry]:
         table = processorType.value
         cursor = self._db.cursor()
-        cursor.execute(f"SELECT id, type, params, order_num FROM {table} ORDER BY order_num ASC")
+        cursor.execute(f"SELECT ROWID, type, params, order_num FROM {table} ORDER BY order_num ASC")
         return [ProcessorEntry(id=row[0], type=row[1], params=json.loads(row[2]), order=row[3]) for row in cursor.fetchall()]
 
     def close(self) -> None:

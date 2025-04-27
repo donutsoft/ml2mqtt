@@ -7,6 +7,7 @@ from classifiers.RandomForest import RandomForest, RandomForestParams
 from classifiers.KNNClassifier import KNNClassifier, KNNParams
 from MqttClient import MqttClient
 from postprocessors.PostprocessorFactory import PostprocessorFactory
+from postprocessors.base import BasePostprocessor
 
 DISABLED_LABEL = "Disabled"
 
@@ -18,7 +19,8 @@ class ModelService:
         self._model = None
         self._logger = logging.getLogger(__name__)
         self._previousLabel: Optional[str] = None
-        self._postprocessors: List[Any] = []
+        self._postProcessorFactory = PostprocessorFactory()
+        self._postprocessors: List[BasePostprocessor] = []
 
         self._modelType: str
         self._allParams: Dict[str, Dict[str, Any]] = {}
@@ -59,7 +61,7 @@ class ModelService:
         
         for postprocessor_data in postProcessors:
             try:
-                postprocessor = PostprocessorFactory.create(postprocessor_data.type, postprocessor_data.params)
+                postprocessor = self._postProcessorFactory.create(postprocessor_data.type, postprocessor_data.id, postprocessor_data.params)
                 self._postprocessors.append(postprocessor)
             except ValueError as e:
                 self._logger.warning(f"Failed to load postprocessor: {e}")
@@ -204,27 +206,34 @@ class ModelService:
 
     def getPostprocessors(self) -> List[Dict[str, Any]]:
         """Get list of postprocessor configurations."""
-        #return [p.to_dict() for p in self._postprocessors]
-        return [PostprocessorFactory().create("only_diff", {})]
+        return self._postprocessors
 
-    def addPostprocessor(self, postprocessor_data: Dict[str, Any]) -> None:
+    def addPostprocessor(self, type: str, params: Dict[str, Any]) -> None:
         """Add a new postprocessor."""
-        #postprocessor = PostprocessorFactory.create(postprocessor_data)
-        #self._postprocessors.append(postprocessor)
-        
-        # Save updated postprocessors
-        #self._modelstore.saveDict('postprocessors', self.getPostprocessors())
-        pass
+        try:
+            # First add to database to get the ID
+            dbId = self._modelstore.addPostprocessor(type, params)
+            # Then create the postprocessor instance
+            postprocessor = self._postProcessorFactory.create(type, dbId, params)
+            self._postprocessors.append(postprocessor)
+        except Exception as e:
+            # If postprocessor creation fails, delete from database
+            if 'dbId' in locals():
+                self._modelstore.deletePostprocessor(dbId)
+            raise e
 
     def removePostprocessor(self, index: int) -> None:
         """Remove a postprocessor by index."""
         if 0 <= index < len(self._postprocessors):
-            self._postprocessors.pop(index)
-            self._modelstore.saveDict('postprocessors', self.getPostprocessors())
+            deletedProcessor = self._postprocessors.pop(index)
+            
+            self._modelstore.deletePostprocessor(deletedProcessor.id)
 
     def reorderPostprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder postprocessors."""
         if 0 <= from_index < len(self._postprocessors) and 0 <= to_index < len(self._postprocessors):
+            self._logger.error("Previous postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
             postprocessor = self._postprocessors.pop(from_index)
             self._postprocessors.insert(to_index, postprocessor)
-            self._modelstore.saveDict('postprocessors', self.getPostprocessors())
+            self._logger.error("Reordering postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
+            self._modelstore.reorderPostprocessors(map(lambda p: p.dbId, self._postprocessors))

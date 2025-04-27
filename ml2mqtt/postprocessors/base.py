@@ -14,13 +14,15 @@ class BasePostprocessor(ABC):
         "properties": {}
     }
     
-    def __init__(self, **kwargs):
+    def __init__(self, dbId: int, **kwargs):
         """
         Initialize the postprocessor.
         
         Args:
+            dbId: Database ID for this postprocessor
             **kwargs: Additional configuration parameters
         """
+        self.dbId = dbId
         self.config = kwargs
     
     @abstractmethod

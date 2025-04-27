@@ -1,7 +1,7 @@
 import os
 import importlib
 import logging
-from typing import Dict, Any, Type, List
+from typing import Dict, Any, Type, List, Optional
 
 from .base import BasePostprocessor
 
@@ -55,12 +55,13 @@ class PostprocessorFactory:
             })
         return postprocessors
     
-    def create(self, postprocessor_type: str, params: Dict[str, Any] = None) -> BasePostprocessor:
+    def create(self, postprocessor_type: str, dbId: int, params: Dict[str, Any] = None) -> BasePostprocessor:
         """
         Create a postprocessor instance.
         
         Args:
             postprocessor_type: Type of postprocessor to create
+            dbId: Database ID for this postprocessor
             params: Configuration parameters for the postprocessor
             
         Returns:
@@ -73,4 +74,4 @@ class PostprocessorFactory:
             raise ValueError(f"Unknown postprocessor type: {postprocessor_type}")
             
         postprocessor_class = self._postprocessor_types[postprocessor_type]
-        return postprocessor_class(**(params or {})) 
+        return postprocessor_class(dbId=dbId, **(params or {})) 

@@ -254,12 +254,14 @@ def init_model_routes(model_manager: ModelManager):
             data = request.get_json()
             if data is None:
                 return jsonify({"error": "Missing or invalid JSON payload"}), 400
-                
-            model_manager.getModel(modelName).addPostprocessor(data)
+            logger.info(f"Adding postprocessor: {data}")
+            model_manager.getModel(modelName).addPostprocessor(data['type'], data['params'])
             return jsonify({"success": True})
         except ValueError as e:
+            logger.error(f"Error adding postprocessor: {e}")
             return jsonify({"error": str(e)}), 400
         except Exception as e:
+            logger.error(f"Error adding postprocessor: {e}")
             return jsonify({"error": "Internal server error"}), 500
 
     @model_bp.route("/edit-model/<string:modelName>/postprocessor/delete", methods=["POST"])
