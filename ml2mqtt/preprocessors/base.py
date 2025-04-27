@@ -6,7 +6,6 @@ class BasePreprocessor(ABC):
     
     name: str = "base"  # Override this in subclasses
     description: str = "Base preprocessor"  # Override this in subclasses
-    template_name: str = "base_config.html"  # Override this in subclasses
     
     def __init__(self, entity: Optional[str] = None, **kwargs):
         """

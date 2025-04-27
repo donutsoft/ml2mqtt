@@ -39,15 +39,13 @@ class StringConverterPreprocessor(BasePreprocessor):
         return result
     
     @classmethod
-    def get_config_template(cls) -> str:
-        return """
-        <div class="formField">
-            <label for="preEntity">Target Entity</label>
-            <select id="preEntity" class="styledSelect">
-                <option value="">All Entities</option>
-                <option value="temperature">temperature</option>
-                <option value="humidity">humidity</option>
-                <option value="pressure">pressure</option>
-            </select>
-        </div>
-        """ 
+    def get_config_schema(cls) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "entity": {
+                    "type": "string",
+                    "description": "Target entity to process (empty for all entities)"
+                }
+            }
+        } 
