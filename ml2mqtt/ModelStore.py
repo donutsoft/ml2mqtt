@@ -61,7 +61,7 @@ class ModelStore:
 
     def __init__(self, modelPath: str, unknownValue: float = 9999.0):
         self.modelPath = modelPath
-        self.logger = logging.getLogger("ml2mqtt")
+        self.logger = logging.getLogger(__name__)
         self.lock = threading.Lock()
         self._db = sqlite3.connect(modelPath, check_same_thread=False)
         self._db.execute("PRAGMA journal_mode=WAL")

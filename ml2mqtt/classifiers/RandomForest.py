@@ -39,7 +39,7 @@ class RandomForest:
     def __init__(self, params: Optional[RandomForestParams] = None):
         self.params: RandomForestParams = {**DEFAULT_RANDOM_FOREST_PARAMS, **(params or {})}
         
-        self.logger: logging.Logger = logging.getLogger("ml2mqtt")
+        self.logger: logging.Logger = logging.getLogger(__name__)
         self.logger.info(f"RandomForest initialized with params: {self.params}")
         self._X_test: Optional[pd.DataFrame] = None
         self._y_test: Optional[np.ndarray] = None

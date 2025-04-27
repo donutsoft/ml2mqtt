@@ -16,7 +16,7 @@ class ModelService:
         self._mqttClient = mqttClient
         self._modelstore: ModelStore = modelstore
         self._model = None
-        self._logger = logging.getLogger("ml2mqtt")
+        self._logger = logging.getLogger(__name__)
         self._previousLabel: Optional[str] = None
         self._postprocessors: List[Any] = []
 

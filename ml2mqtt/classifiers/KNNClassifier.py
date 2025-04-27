@@ -24,7 +24,7 @@ class KNNClassifier:
     def __init__(self, params: Optional[KNNParams] = None):
         self.params: KNNParams = {**DEFAULT_KNN_PARAMS, **(params or {})}
 
-        self.logger: logging.Logger = logging.getLogger("ml2mqtt")
+        self.logger: logging.Logger = logging.getLogger(__name__)
         self.logger.info(f"KNNClassifier initialized with params: {self.params}")
         self._X_test: Optional[pd.DataFrame] = None
         self._y_test: Optional[np.ndarray] = None

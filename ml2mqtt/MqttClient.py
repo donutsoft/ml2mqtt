@@ -5,7 +5,7 @@ import time
 
 class MqttClient:
     def __init__(self, mqttConfig):
-        self.logger = logging.getLogger("ml2mqtt")
+        self.logger = logging.getLogger(__name__)
         self._connected = False
         self.topics = {}
         self._mqttClient = mqtt.Client()

@@ -16,7 +16,7 @@ streamHandler = logging.StreamHandler(logStream)
 streamHandler.setLevel(logging.INFO)
 streamHandler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
-logger = logging.getLogger("ml2mqtt")
+logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(streamHandler)
 

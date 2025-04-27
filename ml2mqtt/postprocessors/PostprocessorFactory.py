@@ -9,7 +9,7 @@ class PostprocessorFactory:
     """Factory for creating postprocessor instances."""
     
     def __init__(self):
-        self._logger = logging.getLogger("ml2mqtt")
+        self._logger = logging.getLogger(__name__)
         self._postprocessor_types: Dict[str, Type[BasePostprocessor]] = {}
         self._load_postprocessors()
     

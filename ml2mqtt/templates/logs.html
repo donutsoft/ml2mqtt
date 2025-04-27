@@ -3,21 +3,153 @@
 
 <h2>Logs</h2>
 
+<div class="log-controls">
+  <select id="logLevel" onchange="filterLogs()">
+    <option value="ALL" selected>ALL</option>
+    <option value="DEBUG">DEBUG</option>
+    <option value="INFO">INFO</option>
+    <option value="WARNING">WARNING</option>
+    <option value="ERROR">ERROR</option>
+    <option value="CRITICAL">CRITICAL</option>
+  </select>
+  <button onclick="clearLogs()" class="btn">Clear</button>
+  <button onclick="toggleAutoRefresh()" class="btn" id="pauseBtn">Pause</button>
+  <button onclick="scrollToBottom()" class="btn">Scroll to Bottom</button>
+</div>
+
 <div id="logContent" class="log-content">
-  <pre>{{ logs }}</pre>
+  <pre></pre>
 </div>
 
 <script>
-  async function refreshLogs() {
-    const response = await fetch('{{ url_for("log.logsRaw") }}');
-    const logs = await response.text();
-    document.getElementById('logContent').innerHTML = `<pre>${logs}</pre>`;
+  // State management
+  const state = {
+    isAutoRefreshEnabled: true,
+    lastLogCount: 0,
+    isUserScrolled: false,
+    allLogs: []
+  };
+
+  // DOM elements
+  const elements = {
+    logContent: document.getElementById('logContent').querySelector('pre'),
+    pauseBtn: document.getElementById('pauseBtn'),
+    logLevel: document.getElementById('logLevel')
+  };
+
+  // Utility functions
+  function scrollToBottom(smooth = true) {
+    const container = document.getElementById('logContent');
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+    state.isUserScrolled = false;
   }
 
-  refreshLogs();
+  function isAtBottom(container) {
+    return container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+  }
 
-  // Refresh logs every 5 seconds
+  // Log management functions
+  function filterLogs() {
+    const level = elements.logLevel.value;
+    const filteredLines = state.allLogs.filter(line => {
+      if (!line) return false;
+      if (level === 'ALL') return true;
+      
+      const parts = line.split(' - ');
+      if (parts.length < 2) return false;
+      
+      const logLevel = parts[1].split(' - ')[0];
+      return logLevel === level;
+    });
+    
+    elements.logContent.textContent = filteredLines.join('\n');
+    scrollToBottom(false);
+  }
+
+  function clearLogs() {
+    elements.logContent.textContent = '';
+    state.allLogs = [];
+    state.lastLogCount = 0;
+    scrollToBottom(false);
+  }
+
+  function toggleAutoRefresh() {
+    state.isAutoRefreshEnabled = !state.isAutoRefreshEnabled;
+    elements.pauseBtn.textContent = state.isAutoRefreshEnabled ? 'Pause' : 'Resume';
+  }
+
+  async function refreshLogs() {
+    if (!state.isAutoRefreshEnabled) return;
+
+    try {
+      const response = await fetch('{{ url_for("log.logsRaw") }}');
+      const logs = await response.text();
+      const lines = logs.split('\n');
+      
+      if (lines.length > state.lastLogCount) {
+        const newLines = lines.slice(state.lastLogCount);
+        state.allLogs = state.allLogs.concat(newLines);
+        state.lastLogCount = lines.length;
+        
+        filterLogs();
+        
+        if (!state.isUserScrolled) {
+          scrollToBottom();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh logs:', error);
+    }
+  }
+
+  // Event listeners
+  document.getElementById('logContent').addEventListener('scroll', function() {
+    state.isUserScrolled = !isAtBottom(this);
+  });
+
+  // Initialize
+  refreshLogs();
   setInterval(refreshLogs, 5000);
 </script>
+
+<style>
+  .log-controls {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .log-content {
+    background-color: #1a2735;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  .log-content pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  select, button {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #2c3e50;
+    background-color: #1f2d3a;
+    color: white;
+  }
+
+  button:hover {
+    background-color: #2c3e50;
+  }
+</style>
 
 {% endblock %}
