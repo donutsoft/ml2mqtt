@@ -15,6 +15,7 @@ class ModelManager:
         for modelFile in self._modelsDir.glob("*.db"):
             modelName = self.getModelName(modelFile)
             service = ModelService(self._mqttClient, ModelStore(str(modelFile)))
+            service.subscribeToMqttTopics()
             self._models[modelName] = service
 
     def addModel(self, model: str) -> ModelService:
