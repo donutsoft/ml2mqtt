@@ -24,7 +24,21 @@ logger.addHandler(streamHandler)
 os.makedirs("models", exist_ok=True)
 
 app = Flask(__name__, static_url_path='')
-
+@app.context_processor
+def inject_globals():
+    return dict(
+        enumerate=enumerate,
+        len=len,
+        str=str,
+        int=int,
+        float=float,
+        zip=zip,
+        sorted=sorted,
+        list=list,
+        dict=dict,
+        min=min,
+        max=max
+    )
 # Initialize configuration and services
 config = Config()
 mqttClient = MqttClient(config.getValue("mqtt"))

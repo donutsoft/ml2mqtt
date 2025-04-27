@@ -1,11 +1,18 @@
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, ClassVar
 from .base import BasePostprocessor
 
 class OnlyDiffPostprocessor(BasePostprocessor):
     """Postprocessor that drops results unless they differ from the previous result."""
     
-    name = "only_diff"
-    description = "Drops results unless they differ from the previous result"
+    id: ClassVar[str] = "only_diff"
+    description: ClassVar[str] = "Drops results unless they differ from the previous result"
+    
+    config_schema: ClassVar[Dict[str, Any]] = {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": False
+    }
     
     def __init__(self, **kwargs):
         """
@@ -32,11 +39,4 @@ class OnlyDiffPostprocessor(BasePostprocessor):
             return observation, None
             
         self.last_label = label
-        return observation, label
-    
-    @classmethod
-    def get_config_schema(cls) -> Dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {}
-        } 
+        return observation, label 

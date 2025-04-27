@@ -8,7 +8,7 @@ from classifiers.KNNClassifier import KNNClassifier, KNNParams
 from MqttClient import MqttClient
 from postprocessors.PostprocessorFactory import PostprocessorFactory
 
-DISABLED_LABEL = "disabled"
+DISABLED_LABEL = "Disabled"
 
 
 class ModelService:
@@ -204,7 +204,8 @@ class ModelService:
 
     def getPostprocessors(self) -> List[Dict[str, Any]]:
         """Get list of postprocessor configurations."""
-        return [p.to_dict() for p in self._postprocessors]
+        #return [p.to_dict() for p in self._postprocessors]
+        return [PostprocessorFactory().create("only_diff", {})]
 
     def addPostprocessor(self, postprocessor_data: Dict[str, Any]) -> None:
         """Add a new postprocessor."""

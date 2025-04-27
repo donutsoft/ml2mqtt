@@ -2,14 +2,18 @@ from flask import Blueprint, render_template, request, url_for, redirect, abort,
 from typing import Dict, Any, List, Optional
 import json
 import math
+import logging
 from ModelStore import ModelObservation, EntityKey
 from classifiers.RandomForest import RandomForestParams
 from classifiers.KNNClassifier import KNNParams
 from utils.helpers import slugify
+from postprocessors.PostprocessorFactory import PostprocessorFactory
+from ModelManager import ModelManager
 
+logger = logging.getLogger("ml2mqtt.routes.model")
 model_bp = Blueprint('model', __name__)
 
-def init_model_routes(model_manager):
+def init_model_routes(model_manager: ModelManager):
     @model_bp.route("/")
     def home() -> str:
         models = []
@@ -75,6 +79,9 @@ def init_model_routes(model_manager):
 
         model = ViewModel()
 
+
+
+
         if section == "observations":
             page = int(request.args.get("page", 1))
             pageSize = 50
@@ -98,6 +105,8 @@ def init_model_routes(model_manager):
                 "modelParameters": model_manager.getModel(modelName).getModelSettings(),
                 "labelStats": model_manager.getModel(modelName).getLabelStats()
             }
+        elif section == "postprocessors":
+            model.postprocessors = model_manager.getModel(modelName).getPostprocessors()
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
         elif section == "mqtt":
@@ -106,14 +115,15 @@ def init_model_routes(model_manager):
             }
 
         sectionTemplate = f"edit_model/{section}.html"
-
+        logger.info(f"Available postprocessors: {PostprocessorFactory().get_available_postprocessors()}")
         return render_template(
             "edit_model.html",
             title=f"Edit Model: {model.name}",
             activePage=None,
             activeSection=section,
             model=model,
-            sectionTemplate=sectionTemplate
+            sectionTemplate=sectionTemplate,
+            availablePostprocessors=PostprocessorFactory().get_available_postprocessors(),
         )
 
     @model_bp.route("/edit-model/<string:modelName>/settings/update", methods=["POST"])

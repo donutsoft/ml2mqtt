@@ -21,7 +21,7 @@ class PostprocessorFactory:
             if filename.endswith('.py') and not filename.startswith('__'):
                 module_name = filename[:-3]
                 try:
-                    module = importlib.import_module(f'.{module_name}', package=__name__)
+                    module = importlib.import_module(f'.{module_name}', package='postprocessors')
                     
                     # Look for classes that inherit from BasePostprocessor
                     for attr_name in dir(module):
@@ -36,14 +36,24 @@ class PostprocessorFactory:
     
     def get_available_postprocessors(self) -> List[Dict[str, Any]]:
         """Get a list of all available postprocessors with their metadata."""
-        return [
-            {
+        postprocessors = []
+        for processor in self._postprocessor_types.values():
+            # Skip the base processor
+            if processor.id == "base" or processor == BasePostprocessor:
+                continue
+                
+            self._logger.info(f"Processor: {processor}")
+            schema = processor.config_schema
+            if schema and "required" in schema and isinstance(schema["required"], set):
+                schema = schema.copy()
+                schema["required"] = list(schema["required"])  # sets -> lists
+
+            postprocessors.append({
                 "id": processor.id,
                 "description": processor.description,
-                "config_schema": processor.config_schema
-            }
-            for processor in self._postprocessor_types.values()
-        ]
+                "config_schema": schema
+            })
+        return postprocessors
     
     def create(self, postprocessor_type: str, params: Dict[str, Any] = None) -> BasePostprocessor:
         """
