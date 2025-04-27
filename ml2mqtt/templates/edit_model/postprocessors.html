@@ -1,3 +1,187 @@
 <h2>Postprocessors</h2>
 <h4 style="color: #7e8c9c; margin-top: -0.25rem; margin-bottom: 1.5rem;">Model: {{ model.name }}</h4>
 <p>Define any logic or formatting applied after the model predicts a result.</p>
+
+<div class="settingsGroup">
+    <h3>Postprocessors</h3>
+  
+    <div id="postprocessorList">
+      <!-- Postprocessors will be listed here -->
+    </div>
+  
+    <!-- Add Postprocessor Button -->
+    <div style="text-align: right; margin-top: 2rem;">
+      <button class="btn primary" onclick="togglePostprocessorModal()">➕ Add Postprocessor</button>
+    </div>
+  </div>
+  
+  <!-- Overlay Modal -->
+  <div id="postprocessorModal" class="modalOverlay" style="display: none;">
+    <div class="modalContent">
+      <h3>Add Postprocessor</h3>
+  
+      <div class="formField">
+        <label for="postType">Type</label>
+        <select id="postType" class="styledSelect" onchange="updatePostParamUI()">
+          <option value="majority_vote" selected>Majority Vote</option>
+          <option value="only_diff">Only Diff</option>
+        </select>
+      </div>
+  
+      <div class="formField" id="paramWindowSize">
+        <label for="postWindowSize">Window Size</label>
+        <input type="number" id="postWindowSize" value="5">
+      </div>
+  
+      <div class="formField buttonRow" style="justify-content: flex-end; margin-top: 1rem;">
+        <button class="btn" onclick="togglePostprocessorModal()">Cancel</button>
+        <button class="btn primary" onclick="submitPostprocessor()">Add</button>
+      </div>
+    </div>
+  </div>
+  
+  <style>
+    .deleteColumn {
+      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1;
+    }
+  
+    .deleteLink {
+      color: #ff4d4d;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+  
+    .deleteLink:hover {
+      text-decoration: underline;
+    }
+  
+    .formFieldRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+  
+    .modalOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+  
+    .modalContent {
+      background: #1f2d3a;
+      border: 1px solid #2c3e50;
+      border-radius: 8px;
+      padding: 2rem;
+      width: 400px;
+    }
+  
+    .postprocessorRow {
+      border: 1px solid #2c3e50;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      background-color: #1a2735;
+      cursor: grab;
+    }
+  
+    .postprocessorRow.drag-over {
+      background-color: #27384a;
+      border: 2px dashed #4fa3f7;
+    }
+  
+    .subText {
+      color: #c0cbdc;
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+  
+    .buttonRow {
+      display: flex;
+      gap: 1rem;
+    }
+  </style>
+  
+  <script>
+    function togglePostprocessorModal() {
+      const modal = document.getElementById("postprocessorModal");
+      modal.style.display = modal.style.display === "none" ? "flex" : "none";
+    }
+  
+    function updatePostParamUI() {
+      const type = document.getElementById("postType").value;
+      document.getElementById("paramWindowSize").style.display = type === "majority_vote" ? "block" : "none";
+    }
+  
+    function submitPostprocessor() {
+      const type = document.getElementById("postType").value;
+      const windowSize = parseInt(document.getElementById("postWindowSize").value);
+  
+      const params = {};
+      if (type === "majority_vote") params.windowSize = windowSize;
+  
+      const payload = { type, params };
+  
+      fetch(`/edit-model/{{ model.name }}/postprocessor/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (res.ok) window.location.reload();
+        else showToast("Error adding postprocessor", true);
+      });
+    }
+  
+    function removePostprocessor(index) {
+      fetch(`/edit-model/{{ model.name }}/postprocessor/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index })
+      }).then(res => {
+        if (res.ok) window.location.reload();
+        else showToast("Error removing postprocessor", true);
+      });
+    }
+  
+    let dragStartIndex = null;
+  
+    function onDragStart(event) {
+      dragStartIndex = Number(event.currentTarget.dataset.index);
+      event.dataTransfer.effectAllowed = "move";
+    }
+  
+    function onDragOver(event) {
+      event.preventDefault();
+      event.currentTarget.classList.add("drag-over");
+    }
+  
+    function onDragEnd(event) {
+      document.querySelectorAll(".postprocessorRow").forEach(el => el.classList.remove("drag-over"));
+    }
+  
+    function onDrop(event) {
+      event.preventDefault();
+      const dropIndex = Number(event.currentTarget.dataset.index);
+      event.currentTarget.classList.remove("drag-over");
+  
+      if (dropIndex === dragStartIndex) return;
+  
+      fetch(`/edit-model/{{ model.name }}/postprocessor/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromIndex: dragStartIndex, toIndex: dropIndex })
+      }).then(res => {
+        if (res.ok) window.location.reload();
+        else showToast("Failed to reorder postprocessors", true);
+      });
+    }
+  </script>

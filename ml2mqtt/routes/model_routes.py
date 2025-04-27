@@ -238,4 +238,46 @@ def init_model_routes(model_manager):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+    @model_bp.route("/edit-model/<string:modelName>/postprocessor/add", methods=["POST"])
+    def addPostprocessor(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if data is None:
+                return jsonify({"error": "Missing or invalid JSON payload"}), 400
+                
+            model_manager.getModel(modelName).addPostprocessor(data)
+            return jsonify({"success": True})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
+
+    @model_bp.route("/edit-model/<string:modelName>/postprocessor/delete", methods=["POST"])
+    def deletePostprocessor(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if data is None or "index" not in data:
+                return jsonify({"error": "Missing index in payload"}), 400
+                
+            model_manager.getModel(modelName).removePostprocessor(data["index"])
+            return jsonify({"success": True})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
+
+    @model_bp.route("/edit-model/<string:modelName>/postprocessor/reorder", methods=["POST"])
+    def reorderPostprocessors(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if data is None or "fromIndex" not in data or "toIndex" not in data:
+                return jsonify({"error": "Missing fromIndex or toIndex in payload"}), 400
+                
+            model_manager.getModel(modelName).reorderPostprocessors(data["fromIndex"], data["toIndex"])
+            return jsonify({"success": True})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
+
     return model_bp 

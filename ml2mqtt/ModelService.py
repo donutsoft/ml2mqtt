@@ -6,6 +6,7 @@ from ModelStore import ModelStore, ModelObservation, EntityKey
 from classifiers.RandomForest import RandomForest, RandomForestParams
 from classifiers.KNNClassifier import KNNClassifier, KNNParams
 from MqttClient import MqttClient
+from postprocessors import postprocessors
 
 DISABLED_LABEL = "disabled"
 
@@ -17,10 +18,12 @@ class ModelService:
         self._model = None
         self._logger = logging.getLogger("ml2mqtt")
         self._previousLabel: Optional[str] = None
+        self._postprocessors: List[Any] = []
 
         self._modelType: str
         self._allParams: Dict[str, Dict[str, Any]] = {}
         self._populateModel()
+        self._loadPostprocessors()
 
     def dispose(self) -> None:
         topic = self.getMqttTopic()
@@ -48,6 +51,17 @@ class ModelService:
 
         observations = self._modelstore.getObservations()
         self._model.populateDataframe(observations)
+
+    def _loadPostprocessors(self) -> None:
+        """Load postprocessors from model settings."""
+        settings = self._modelstore.getDict('postprocessors') or []
+        self._postprocessors = []
+        
+        for postprocessor_data in settings:
+            postprocessor_type = postprocessor_data.get('type')
+            if postprocessor_type in postprocessors:
+                postprocessor_class = postprocessors[postprocessor_type]
+                self._postprocessors.append(postprocessor_class.from_dict(postprocessor_data))
 
     def getEntityKeys(self) -> List[EntityKey]:
         features = self._model.getFeatureImportance() or {}
@@ -97,6 +111,14 @@ class ModelService:
             self._populateModel()
 
         prediction = self._model.predictLabel(entityValues)
+        
+        # Apply postprocessors
+        observation = entityValues
+        for postprocessor in self._postprocessors:
+            observation, prediction = postprocessor.process(observation, prediction)
+            if prediction is None:
+                self._logger.debug("Postprocessor dropped prediction")
+                return
 
         if prediction != self._previousLabel:
             self._previousLabel = prediction
@@ -178,3 +200,33 @@ class ModelService:
         self._allParams = settings.get("model_parameters", {})
         self._modelstore.saveDict("model_settings", settings)
         self._populateModel()
+
+    def getPostprocessors(self) -> List[Dict[str, Any]]:
+        """Get list of postprocessor configurations."""
+        return [p.to_dict() for p in self._postprocessors]
+
+    def addPostprocessor(self, postprocessor_data: Dict[str, Any]) -> None:
+        """Add a new postprocessor."""
+        postprocessor_type = postprocessor_data.get('type')
+        if postprocessor_type not in postprocessors:
+            raise ValueError(f"Unknown postprocessor type: {postprocessor_type}")
+            
+        postprocessor_class = postprocessors[postprocessor_type]
+        postprocessor = postprocessor_class.from_dict(postprocessor_data)
+        self._postprocessors.append(postprocessor)
+        
+        # Save updated postprocessors
+        self._modelstore.saveDict('postprocessors', self.getPostprocessors())
+
+    def removePostprocessor(self, index: int) -> None:
+        """Remove a postprocessor by index."""
+        if 0 <= index < len(self._postprocessors):
+            self._postprocessors.pop(index)
+            self._modelstore.saveDict('postprocessors', self.getPostprocessors())
+
+    def reorderPostprocessors(self, from_index: int, to_index: int) -> None:
+        """Reorder postprocessors."""
+        if 0 <= from_index < len(self._postprocessors) and 0 <= to_index < len(self._postprocessors):
+            postprocessor = self._postprocessors.pop(from_index)
+            self._postprocessors.insert(to_index, postprocessor)
+            self._modelstore.saveDict('postprocessors', self.getPostprocessors())
