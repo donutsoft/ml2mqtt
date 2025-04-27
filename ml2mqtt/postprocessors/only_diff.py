@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, Tuple, ClassVar
 from .base import BasePostprocessor
+import logging
 
 class OnlyDiffPostprocessor(BasePostprocessor):
     """Postprocessor that drops results unless they differ from the previous result."""
@@ -11,7 +12,7 @@ class OnlyDiffPostprocessor(BasePostprocessor):
         "type": "object",
         "properties": {},
         "required": [],
-        "additionalProperties": False
+        "additionalProperties": False,
     }
     
     def __init__(self, **kwargs):
@@ -23,6 +24,7 @@ class OnlyDiffPostprocessor(BasePostprocessor):
         """
         super().__init__(**kwargs)
         self.last_label = None
+        self.logger = logging.getLogger(__file__)
     
     def process(self, observation: Dict[str, Any], label: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
         """
@@ -37,7 +39,7 @@ class OnlyDiffPostprocessor(BasePostprocessor):
         """
         if label == self.last_label:
             return observation, None
-            
+        
         self.last_label = label
         return observation, label 
     

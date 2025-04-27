@@ -18,7 +18,6 @@ class ModelService:
         self._modelstore: ModelStore = modelstore
         self._model = None
         self._logger = logging.getLogger(__name__)
-        self._previousLabel: Optional[str] = None
         self._postProcessorFactory = PostprocessorFactory()
         self._postprocessors: List[BasePostprocessor] = []
 
@@ -120,14 +119,11 @@ class ModelService:
         for postprocessor in self._postprocessors:
             observation, prediction = postprocessor.process(observation, prediction)
             if prediction is None:
-                self._logger.debug("Postprocessor dropped prediction")
                 return
 
-        if prediction != self._previousLabel:
-            self._previousLabel = prediction
-            topic = self.getMqttTopic()
-            self._mqttClient.publish(f"{topic}/state", json.dumps({"state": prediction}))
-            self._logger.info("Predicted label: %s", prediction)
+        topic = self.getMqttTopic()
+        self._mqttClient.publish(f"{topic}/state", json.dumps({"state": prediction}))
+        self._logger.info("Predicted label: %s", prediction)
 
     def getMqttTopic(self) -> str:
         return self._modelstore.getMqttTopic() or ""
