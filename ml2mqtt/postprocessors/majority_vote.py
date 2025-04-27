@@ -5,7 +5,7 @@ from .base import BasePostprocessor
 class MajorityVotePostprocessor(BasePostprocessor):
     """Postprocessor that waits for N results and returns the most common label."""
     
-    id: ClassVar[str] = "majority_vote"
+    type: ClassVar[str] = "majority_vote"
     description: ClassVar[str] = "Waits for N results and returns the most common label"
     
     config_schema: ClassVar[Dict[str, Any]] = {
@@ -58,3 +58,12 @@ class MajorityVotePostprocessor(BasePostprocessor):
         majority_label = max(label_counts.items(), key=lambda x: x[1])[0]
         
         return observation, majority_label 
+
+    def configToString(self) -> str:
+        """
+        Returns a human-readable string describing the current configuration.
+        
+        Returns:
+            A string describing the configuration
+        """
+        return f"I will wait for {self.window_size} results and return the most frequent result" 

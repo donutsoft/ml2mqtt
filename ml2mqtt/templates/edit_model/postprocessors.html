@@ -13,10 +13,25 @@
            ondragover="onDragOver(event)"
            ondragend="onDragEnd(event)"
            ondrop="onDrop(event)">
-        <div>
-          <strong>{{ postprocessor.id }} - {{ postprocessor.description }}</strong>
+        <div style="flex: 1;">
+          <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 0.2rem;">
+            {{ postprocessor.type }}
+          </div>
+  
+          {% if postprocessor.description %}
+            <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
+              {{ postprocessor.description }}
+            </h4>
+          {% endif %}
+  
+          {% if postprocessor.config_string %}
+            <h5 style="margin: 0.4rem 0 0.5rem 0; font-weight: normal; color: #9ba9b4; font-size: 0.95rem;">
+              {{ postprocessor.config_string }}
+            </h5>
+          {% endif %}
+  
           {% if postprocessor.params %}
-            <div class="subText">
+            <div class="subText" style="margin-top: 0.25rem;">
               {% for key, value in postprocessor.params.items() %}
                 {{ key }}: {{ value }}{% if not loop.last %}, {% endif %}
               {% endfor %}
@@ -131,7 +146,6 @@
     gap: 1rem;
   }
 
-  /* Fade-in description */
   .fadeText {
     color: #c0cbdc;
     font-size: 0.9rem;
@@ -163,8 +177,8 @@
 
     for (const processor of availablePostprocessors) {
       const option = document.createElement("option");
-      option.value = processor.id;
-      option.textContent = processor.id;
+      option.value = processor.type;
+      option.textContent = processor.type;
       postTypeSelect.appendChild(option);
     }
 
@@ -179,7 +193,7 @@
     paramsContainer.innerHTML = "";
     descriptionContainer.classList.remove("visible");
 
-    const selectedProcessor = availablePostprocessors.find(p => p.id === type);
+    const selectedProcessor = availablePostprocessors.find(p => p.type === type);
     if (!selectedProcessor) return;
 
     descriptionContainer.textContent = selectedProcessor.description || "";
@@ -215,7 +229,7 @@
 
   function submitPostprocessor() {
     const type = document.getElementById("postType").value;
-    const selectedProcessor = availablePostprocessors.find(p => p.id === type);
+    const selectedProcessor = availablePostprocessors.find(p => p.type === type);
     if (!selectedProcessor) return;
 
     const params = {};

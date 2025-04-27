@@ -29,8 +29,8 @@ class PostprocessorFactory:
                         if (isinstance(attr, type) and 
                             issubclass(attr, BasePostprocessor) and 
                             attr != BasePostprocessor):
-                            self._postprocessor_types[attr.id] = attr
-                            self._logger.info(f"Loaded postprocessor: {attr.id}")
+                            self._postprocessor_types[attr.type] = attr
+                            self._logger.info(f"Loaded postprocessor: {attr.type}")
                 except Exception as e:
                     self._logger.error(f"Failed to load postprocessor module {module_name}: {e}")
     
@@ -39,7 +39,7 @@ class PostprocessorFactory:
         postprocessors = []
         for processor in self._postprocessor_types.values():
             # Skip the base processor
-            if processor.id == "base" or processor == BasePostprocessor:
+            if processor.type == "base" or processor == BasePostprocessor:
                 continue
                 
             self._logger.info(f"Processor: {processor}")
@@ -49,7 +49,7 @@ class PostprocessorFactory:
                 schema["required"] = list(schema["required"])  # sets -> lists
 
             postprocessors.append({
-                "id": processor.id,
+                "type": processor.type,
                 "description": processor.description,
                 "config_schema": schema
             })

@@ -29,8 +29,8 @@ class PreprocessorFactory:
                         if (isinstance(attr, type) and 
                             issubclass(attr, BasePreprocessor) and 
                             attr != BasePreprocessor):
-                            self._preprocessor_types[attr.id] = attr
-                            self._logger.info(f"Loaded preprocessor: {attr.id}")
+                            self._preprocessor_types[attr.type] = attr
+                            self._logger.info(f"Loaded preprocessor: {attr.type}")
                 except Exception as e:
                     self._logger.error(f"Failed to load preprocessor module {module_name}: {e}")
     
@@ -39,6 +39,7 @@ class PreprocessorFactory:
         return [
             {
                 "id": processor.id,
+                "type": processor.type,
                 "description": processor.description,
                 "config_schema": processor.config_schema
             }

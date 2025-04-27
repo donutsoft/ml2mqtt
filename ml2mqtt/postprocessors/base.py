@@ -5,7 +5,7 @@ class BasePostprocessor(ABC):
     """Base class for all postprocessors."""
     
     # Static metadata that must be defined by subclasses
-    id: ClassVar[str] = "base"  # Unique identifier for the postprocessor
+    type: ClassVar[str] = "base"  # Unique identifier for the postprocessor
     description: ClassVar[str] = "Base postprocessor"  # Human-readable description
     
     # Static configuration schema that must be defined by subclasses
@@ -44,8 +44,10 @@ class BasePostprocessor(ABC):
         Convert postprocessor configuration to dictionary.
         """
         return {
-            "type": self.id,
-            "config": self.config
+            "type": self.type,
+            "config": self.config,
+            "config_string": self.configToString(),
+            "description": self.description
         }
     
     @classmethod
@@ -54,3 +56,7 @@ class BasePostprocessor(ABC):
         Create postprocessor instance from dictionary.
         """
         return cls(**data.get("config", {})) 
+    
+    @abstractmethod
+    def configToString(self) -> str:
+        return ""

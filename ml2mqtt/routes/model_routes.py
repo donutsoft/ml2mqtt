@@ -79,9 +79,6 @@ def init_model_routes(model_manager: ModelManager):
 
         model = ViewModel()
 
-
-
-
         if section == "observations":
             page = int(request.args.get("page", 1))
             pageSize = 50
@@ -106,7 +103,8 @@ def init_model_routes(model_manager: ModelManager):
                 "labelStats": model_manager.getModel(modelName).getLabelStats()
             }
         elif section == "postprocessors":
-            model.postprocessors = model_manager.getModel(modelName).getPostprocessors()
+            logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPostprocessors()))}")
+            model.postprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPostprocessors())
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
         elif section == "mqtt":
@@ -115,7 +113,6 @@ def init_model_routes(model_manager: ModelManager):
             }
 
         sectionTemplate = f"edit_model/{section}.html"
-        logger.info(f"Available postprocessors: {PostprocessorFactory().get_available_postprocessors()}")
         return render_template(
             "edit_model.html",
             title=f"Edit Model: {model.name}",

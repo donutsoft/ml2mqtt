@@ -4,7 +4,7 @@ from .base import BasePostprocessor
 class OnlyDiffPostprocessor(BasePostprocessor):
     """Postprocessor that drops results unless they differ from the previous result."""
     
-    id: ClassVar[str] = "only_diff"
+    type: ClassVar[str] = "only_diff"
     description: ClassVar[str] = "Drops results unless they differ from the previous result"
     
     config_schema: ClassVar[Dict[str, Any]] = {
@@ -40,3 +40,6 @@ class OnlyDiffPostprocessor(BasePostprocessor):
             
         self.last_label = label
         return observation, label 
+    
+    def configToString(self) -> str:
+        return ""

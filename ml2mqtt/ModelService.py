@@ -204,8 +204,8 @@ class ModelService:
         self._modelstore.saveDict("model_settings", settings)
         self._populateModel()
 
-    def getPostprocessors(self) -> List[Dict[str, Any]]:
-        """Get list of postprocessor configurations."""
+    def getPostprocessors(self) -> List[BasePostprocessor]:
+        """Get list of post processors."""
         return self._postprocessors
 
     def addPostprocessor(self, type: str, params: Dict[str, Any]) -> None:
@@ -227,7 +227,7 @@ class ModelService:
         if 0 <= index < len(self._postprocessors):
             deletedProcessor = self._postprocessors.pop(index)
             
-            self._modelstore.deletePostprocessor(deletedProcessor.id)
+            self._modelstore.deletePostprocessor(deletedProcessor.dbId)
 
     def reorderPostprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder postprocessors."""
