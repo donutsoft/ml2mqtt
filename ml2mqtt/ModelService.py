@@ -105,15 +105,15 @@ class ModelService:
             self._logger.debug("No entity values to process.")
             return
 
-        entityValues = self._modelstore.sortEntityValues(entityMap, label != DISABLED_LABEL)
-
+        entityValues = self._modelstore.sortEntityValues(entityMap, False)
         if label != DISABLED_LABEL:
             learningType = self.getLearningType()
             if learningType == "EAGER" or (learningType == "LAZY" and self._model.predictLabel(entityValues) != label):
+                entityValues = self._modelstore.sortEntityValues(entityMap, True)
                 self._logger.info("Adding training observation for label: %s", label)
-                self._modelstore.addObservation(label, entityMap)
+                self._modelstore.addObservation(label, entityValues)
                 self._populateModel()
-                
+
         prediction = self._model.predictLabel(entityValues)
         
         # Apply postprocessors

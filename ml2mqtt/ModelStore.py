@@ -55,7 +55,7 @@ class ModelStore:
     TYPE_STRING = 2
 
     TYPE_FORMATS = {
-        TYPE_INT: "i",
+        TYPE_INT: "f",
         TYPE_FLOAT: "f",
         TYPE_STRING: "i",  # stored as int reference to string table
     }
@@ -137,9 +137,7 @@ class ModelStore:
         varType = self._getType(variable)
         if varType == self.TYPE_STRING:
             return self._getStringId(variable)
-        elif varType == self.TYPE_INT:
-            return int(variable)
-        elif varType == self.TYPE_FLOAT:
+        elif varType == self.TYPE_INT or varType == self.TYPE_FLOAT:
             return float(variable)
         raise ValueError(f"Unsupported type: {variable}")
 
