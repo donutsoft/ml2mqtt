@@ -26,7 +26,7 @@
     <tbody>
       {% for obs in model.observations %}
       <tr id="observationRow-{{ obs.time }}" style="border-bottom: 1px solid #2c3e50;">
-        <td style="padding: 0.75rem;">{{ obs.display_time }}</td>
+        <td style="padding: 0.75rem;" class="timestamp" data-utc="{{ obs.display_time }}"></td>
 
         {% for entityId in obs.sensorValues %}
         <td style="text-align: center; padding: 0.75rem;">
@@ -133,4 +133,17 @@
       showToast("An error occurred while deleting the observation", true);
     }
   }
+
+  // Convert all UTC timestamps to local browser time with 24hr format + seconds
+  document.querySelectorAll('.timestamp').forEach(el => {
+    const utcTime = el.dataset.utc;
+    const localDate = new Date(utcTime);
+    const formatted = localDate.getFullYear() + '-' +
+                      String(localDate.getMonth() + 1).padStart(2, '0') + '-' +
+                      String(localDate.getDate()).padStart(2, '0') + ' ' +
+                      String(localDate.getHours()).padStart(2, '0') + ':' +
+                      String(localDate.getMinutes()).padStart(2, '0') + ':' +
+                      String(localDate.getSeconds()).padStart(2, '0');
+    el.textContent = formatted;
+  });
 </script>

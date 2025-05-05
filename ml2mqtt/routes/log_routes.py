@@ -10,7 +10,7 @@ def init_log_routes(log_stream: StringIO):
 
     @log_bp.route("/logs/raw")
     def logsRaw() -> str:
-        logLines = log_stream.getvalue().splitlines()
-        return render_template("logs_raw.html", logs=logLines)
+        log_lines = log_stream.getvalue().splitlines()
+        return render_template('logs_raw.html', logs=log_lines), 200, {'Content-Type': 'text/plain'}
 
     return log_bp 

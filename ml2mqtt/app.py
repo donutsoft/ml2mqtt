@@ -5,7 +5,7 @@ from ModelManager import ModelManager
 from io import StringIO
 import logging
 import os
-
+from datetime import datetime, timezone
 from routes.model_routes import init_model_routes
 from routes.log_routes import init_log_routes
 
@@ -14,7 +14,13 @@ logging.basicConfig(level=logging.INFO)
 logStream = StringIO()
 streamHandler = logging.StreamHandler(logStream)
 streamHandler.setLevel(logging.INFO)
-streamHandler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+class UTCFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        return dt.strftime('%Y-%m-%dT%H:%M:%SZ')  # ISO 8601 UTC
+
+streamHandler.setFormatter(UTCFormatter('%(asctime)s - %(levelname)s - %(message)s'))
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

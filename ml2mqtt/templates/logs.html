@@ -22,7 +22,6 @@
 </div>
 
 <script>
-  // State management
   const state = {
     isAutoRefreshEnabled: true,
     lastLogCount: 0,
@@ -30,14 +29,12 @@
     allLogs: []
   };
 
-  // DOM elements
   const elements = {
     logContent: document.getElementById('logContent').querySelector('pre'),
     pauseBtn: document.getElementById('pauseBtn'),
     logLevel: document.getElementById('logLevel')
   };
 
-  // Utility functions
   function scrollToBottom(smooth = true) {
     const container = document.getElementById('logContent');
     container.scrollTo({
@@ -51,20 +48,19 @@
     return container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
   }
 
-  // Log management functions
   function filterLogs() {
     const level = elements.logLevel.value;
     const filteredLines = state.allLogs.filter(line => {
       if (!line) return false;
       if (level === 'ALL') return true;
-      
+
       const parts = line.split(' - ');
       if (parts.length < 2) return false;
-      
-      const logLevel = parts[1].split(' - ')[0];
+
+      const logLevel = parts[1];
       return logLevel === level;
     });
-    
+
     elements.logContent.textContent = filteredLines.join('\n');
     scrollToBottom(false);
   }
@@ -87,15 +83,31 @@
     try {
       const response = await fetch('{{ url_for("log.logsRaw") }}');
       const logs = await response.text();
-      const lines = logs.split('\n');
-      
+      const lines = logs.split('\n').filter(Boolean);
+
       if (lines.length > state.lastLogCount) {
         const newLines = lines.slice(state.lastLogCount);
-        state.allLogs = state.allLogs.concat(newLines);
+
+        const convertedLines = newLines.map(line => {
+          const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) - (.*)$/);
+          if (!match) return line;
+
+          const utc = new Date(match[1]);
+          const local = utc.getFullYear() + '-' +
+            String(utc.getMonth() + 1).padStart(2, '0') + '-' +
+            String(utc.getDate()).padStart(2, '0') + ' ' +
+            String(utc.getHours()).padStart(2, '0') + ':' +
+            String(utc.getMinutes()).padStart(2, '0') + ':' +
+            String(utc.getSeconds()).padStart(2, '0');
+
+          return `${local} - ${match[2]}`;
+        });
+
+        state.allLogs = state.allLogs.concat(convertedLines);
         state.lastLogCount = lines.length;
-        
+
         filterLogs();
-        
+
         if (!state.isUserScrolled) {
           scrollToBottom();
         }
@@ -105,12 +117,10 @@
     }
   }
 
-  // Event listeners
-  document.getElementById('logContent').addEventListener('scroll', function() {
+  document.getElementById('logContent').addEventListener('scroll', function () {
     state.isUserScrolled = !isAtBottom(this);
   });
 
-  // Initialize
   refreshLogs();
   setInterval(refreshLogs, 5000);
 </script>

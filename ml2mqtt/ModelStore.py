@@ -4,7 +4,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Union
 from pathlib import Path
 import json
@@ -35,7 +35,8 @@ class ModelObservation:
 
     @property
     def display_time(self) -> str:
-        return datetime.fromtimestamp(self.time).strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.fromtimestamp(self.time, tz=timezone.utc).isoformat()
+
 
 @dataclass
 class ProcessorEntry:
