@@ -108,10 +108,12 @@ class ModelService:
         entityValues = self._modelstore.sortEntityValues(entityMap, label != DISABLED_LABEL)
 
         if label != DISABLED_LABEL:
-            self._logger.info("Adding training observation for label: %s", label)
-            self._modelstore.addObservation(label, entityMap)
-            self._populateModel()
-
+            learningType = self.getLearningType()
+            if learningType == "EAGER" or (learningType == "LAZY" and self._model.predictLabel(entityValues) != label):
+                self._logger.info("Adding training observation for label: %s", label)
+                self._modelstore.addObservation(label, entityMap)
+                self._populateModel()
+                
         prediction = self._model.predictLabel(entityValues)
         
         # Apply postprocessors
@@ -244,3 +246,16 @@ class ModelService:
             self._postprocessors.insert(to_index, postprocessor)
             self._logger.error("Reordering postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
             self._modelstore.reorderPostprocessors(map(lambda p: p.dbId, self._postprocessors))
+
+    def getLearningType(self):
+        settings = self.getModelSettings() or {}
+        learningType = settings.get("learning_type", "DISABLED")
+        self._logger.info(f"Getting learning type: {learningType}")
+        return learningType
+    
+    def setLearningType(self, learningType: str) -> None:
+        settings = self.getModelSettings() or {}
+        settings["learning_type"] = learningType
+        self._logger.info(f"Setting learning type: {learningType}")
+        self._modelstore.saveDict("model_settings", settings)
+    

@@ -9,11 +9,20 @@
     </select>
   </div>
 
-  <!-- Learning Type Slider (under classifier) -->
+  <!-- Learning Type Slider -->
   <div class="formField" style="margin-top: 1.5rem;">
     <label style="color: #7e8c9c;">Learning Type</label>
-    <input type="range" min="0" max="2" value="0" id="learningTypeSlider" oninput="updateLearningType()" style="width: 100%; margin-top: 0.5rem;">
-    
+    <input
+      type="range"
+      min="0"
+      max="2"
+      id="learningTypeSlider"
+      data-values='["DISABLED", "LAZY", "EAGER"]'
+      data-current="{{ model.params.learningType }}"
+      oninput="updateLearningType()"
+      style="width: 100%; margin-top: 0.5rem;"
+    />
+
     <div id="learningTypeLabels" style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.9rem;">
       <span id="label0">Disabled</span>
       <span id="label1">Lazy Learning</span>
@@ -21,7 +30,7 @@
     </div>
 
     <div id="learningTypeDescription" class="subText fade-text" style="margin-top: 1rem; color: #7e8c9c;">
-      Learning is disabled. New observations will not be saved.
+      <!-- updated by JS -->
     </div>
   </div>
 
@@ -57,13 +66,21 @@ document.querySelector('button[name="action"][value="tune"]').addEventListener("
 });
 
 window.addEventListener("DOMContentLoaded", () => {
+  const slider = document.getElementById('learningTypeSlider');
+  const values = JSON.parse(slider.dataset.values);
+  const current = slider.dataset.current;
+  const index = values.indexOf(current);
+  if (index >= 0) slider.value = index;
+
   showManualParams(localStorage.getItem("showManualParams") == "true");
+
   if (localStorage.getItem("tuningComplete") === "true") {
     localStorage.removeItem("tuningComplete");
     window.scrollTo({ top: 0, behavior: "smooth" });
     showToast("Finished!");
   }
-  updateLearningType(); // Ensure learning type labels are correct on load
+
+  updateLearningLabelsAndDescription();
 });
 
 async function runTuningRequest() {
@@ -74,7 +91,6 @@ async function runTuningRequest() {
     });
 
     if (response.ok) {
-      const result = await response.json();
       localStorage.setItem("tuningComplete", "true");
       window.location.reload();
     } else {
@@ -105,6 +121,75 @@ async function onClassifierChange() {
   }
 }
 
+function toggleManualParams() {
+  const el = document.getElementById("advancedParams");
+  const btn = document.getElementById("showAdvancedBtn");
+  const isHidden = el.style.display === "none";
+  showManualParams(isHidden);
+}
+
+function showManualParams(show) {
+  const el = document.getElementById("advancedParams");
+  const btn = document.getElementById("showAdvancedBtn");
+  localStorage.setItem("showManualParams", show ? "true" : "false");
+
+  el.style.display = show ? "block" : "none";
+  if (btn) btn.textContent = show ? "Hide Manual Settings" : "Manual Settings";
+}
+
+function updateLearningLabelsAndDescription() {
+  const slider = document.getElementById('learningTypeSlider');
+  const values = JSON.parse(slider.dataset.values);
+  const current = values[slider.value];
+  const description = document.getElementById('learningTypeDescription');
+
+  const descriptions = {
+    "DISABLED": "Learning is disabled. New observations will not be saved.",
+    "LAZY": "Lazy learning enabled. A new observation will be saved only if the model prediction was wrong. (Recommended)",
+    "EAGER": "Eager learning enabled. All observations will be saved, even if predictions were correct. (Useful for building initial datasets)"
+  };
+
+  description.classList.remove("fade-in");
+  void description.offsetWidth;
+  description.textContent = descriptions[current];
+  description.classList.add("fade-in");
+
+  for (let i = 0; i < values.length; i++) {
+    const label = document.getElementById(`label${i}`);
+    if (values[i] === current) {
+      label.style.fontWeight = "bold";
+      label.style.color = "#007bff";
+    } else {
+      label.style.fontWeight = "normal";
+      label.style.color = "#7e8c9c";
+    }
+  }
+}
+
+async function updateLearningType() {
+  updateLearningLabelsAndDescription();
+
+  const slider = document.getElementById('learningTypeSlider');
+  const values = JSON.parse(slider.dataset.values);
+  const selected = values[slider.value];
+
+  try {
+    const formData = new FormData();
+    formData.append("learningType", selected);
+
+    const response = await fetch("{{ url_for('model.changeLearning', modelName=model.name) }}", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!response.ok) {
+      console.warn("Failed to update learning type.");
+    }
+  } catch (err) {
+    console.error("Error posting learning type change:", err);
+  }
+}
+
 let toastInterval = null;
 
 function showToast(message, isError = false, animated = false) {
@@ -131,50 +216,6 @@ function showToast(message, isError = false, animated = false) {
     }, isError ? 20000 : 10000);
   }
 }
-
-function toggleManualParams() {
-  const el = document.getElementById("advancedParams");
-  const btn = document.getElementById("showAdvancedBtn");
-  const isHidden = el.style.display === "none";
-  showManualParams(isHidden);
-}
-
-function showManualParams(show) {
-  const el = document.getElementById("advancedParams");
-  const btn = document.getElementById("showAdvancedBtn");
-  localStorage.setItem("showManualParams", show ? "true" : "false");
-
-  el.style.display = show ? "block" : "none";
-  if (btn) btn.textContent = show ? "Hide Manual Settings" : "Manual Settings";
-}
-
-// === Learning Type Slider logic ===
-function updateLearningType() {
-  const slider = document.getElementById('learningTypeSlider');
-  const description = document.getElementById('learningTypeDescription');
-
-  const descriptions = [
-    "Learning is disabled. New observations will not be saved.",
-    "Lazy learning enabled. A new observation will be saved only if the model prediction was wrong. (Recommended)",
-    "Eager learning enabled. All observations will be saved, even if predictions were correct. (Useful for building an initial datasets)"
-  ];
-
-  description.classList.remove("fade-in");
-  void description.offsetWidth; // trigger reflow to restart animation
-  description.textContent = descriptions[slider.value];
-  description.classList.add("fade-in");
-
-  for (let i = 0; i <= 2; i++) {
-    const label = document.getElementById(`label${i}`);
-    if (i == slider.value) {
-      label.style.fontWeight = "bold";
-      label.style.color = "#007bff"; // Light blue highlight
-    } else {
-      label.style.fontWeight = "normal";
-      label.style.color = "#7e8c9c"; // Dim color
-    }
-  }
-}
 </script>
 
 <style>
@@ -183,7 +224,6 @@ function updateLearningType() {
   gap: 1rem;
 }
 
-/* Subtle Fade Animation for Description */
 .fade-text {
   transition: opacity 0.4s ease;
   opacity: 1;

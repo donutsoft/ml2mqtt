@@ -101,7 +101,8 @@ def init_model_routes(model_manager: ModelManager):
                 "observationCount": len(model_manager.getModel(modelName).getObservations()),
                 "modelSize": model_manager.getModel(modelName).getModelSize(),
                 "modelParameters": model_manager.getModel(modelName).getModelSettings(),
-                "labelStats": model_manager.getModel(modelName).getLabelStats()
+                "labelStats": model_manager.getModel(modelName).getLabelStats(),
+                "learningType": model_manager.getModel(modelName).getLearningType(),
             }
         elif section == "postprocessors":
             logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPostprocessors()))}")
@@ -134,7 +135,15 @@ def init_model_routes(model_manager: ModelManager):
             return jsonify(success=True)
         except Exception as e:
             return jsonify(success=False, error=str(e)), 400
-        
+    
+    @model_bp.route("/model/<modelName>/changeLearning", methods=["POST"])
+    def changeLearning(modelName):
+        learningType = request.form.get("learningType") # 'DISABLED', 'LAZY', 'EAGER'
+        logger.info(f"Changing learning type for model '{modelName}' to {learningType}")
+        model_manager.getModel(modelName).setLearningType(learningType)
+
+        return jsonify(success=True)
+
     @model_bp.route("/edit-model/<string:modelName>/settings/update", methods=["POST"])
     def updateModelSettings(modelName: str) -> str:
         def get_int(name: str, default: Optional[int] = None) -> Optional[int]:
