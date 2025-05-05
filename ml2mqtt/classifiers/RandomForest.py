@@ -1,18 +1,15 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.tree import export_graphviz
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from typing import TypedDict, Optional, List, Dict, Any, Union
 import logging
-from typing import TypedDict, Optional, Literal, Union
-
-from typing import Optional, List, Dict, Any
 from ModelStore import ModelObservation
-from sklearn.metrics import classification_report
-import random
+
 
 class RandomForestParams(TypedDict):
     n_estimators: int
@@ -23,6 +20,7 @@ class RandomForestParams(TypedDict):
     class_weight: Union[str, None]
     bootstrap: bool
     oob_score: bool
+
 
 DEFAULT_RANDOM_FOREST_PARAMS: RandomForestParams = {
     "n_estimators": 100,
@@ -35,97 +33,105 @@ DEFAULT_RANDOM_FOREST_PARAMS: RandomForestParams = {
     "oob_score": False
 }
 
+
 class RandomForest:
     def __init__(self, params: Optional[RandomForestParams] = None):
         self.params: RandomForestParams = {**DEFAULT_RANDOM_FOREST_PARAMS, **(params or {})}
-        
         self.logger: logging.Logger = logging.getLogger(__name__)
         self.logger.info(f"RandomForest initialized with params: {self.params}")
+
+        self.labelEncoder: LabelEncoder = LabelEncoder()
+        self._pipeline: Optional[Pipeline] = None
         self._X_test: Optional[pd.DataFrame] = None
         self._y_test: Optional[np.ndarray] = None
-        self._rf_model: Optional[RandomForestClassifier] = None
-        self.labelEncoder: LabelEncoder = LabelEncoder()
         self._modelTrained: bool = False
+        self._categoricalCols: List[str] = []
 
     def populateDataframe(self, observations: List[ModelObservation]) -> None:
         data: List[Dict[str, Any]] = []
         labels: List[str] = []
 
-        for observation in observations:
-            data.append(observation.sensorValues)
-            labels.append(observation.label)
+        for obs in observations:
+            data.append(obs.sensorValues)
+            labels.append(obs.label)
 
         if not data or not labels:
             self.logger.warning("No data available for training.")
             self._modelTrained = False
             return
 
-        X = pd.DataFrame.from_records(data)
+        X = pd.DataFrame(data)
         y = self.labelEncoder.fit_transform(labels)
+
+        self._categoricalCols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+        numericalCols = X.select_dtypes(include=[np.number]).columns.tolist()
+
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), self._categoricalCols),
+                ('num', 'passthrough', numericalCols)
+            ]
+        )
+
+        self._pipeline = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('classifier', RandomForestClassifier(**self.params))
+        ])
 
         try:
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+            self._pipeline.fit(X_train, y_train)
             self._X_test = X_test
             self._y_test = y_test
-
-            rf_model = RandomForestClassifier(**self.params)
-            rf_model.fit(X_train, y_train)
-            self._rf_model = rf_model
             self._modelTrained = True
-        except ValueError:
-            self.logger.info("Not enough data to train the model")
+        except ValueError as e:
+            self.logger.info(f"Not enough data to train the model: {e}")
             self._modelTrained = False
 
     def predictLabel(self, sensorValues: Dict[str, Any]) -> Optional[str]:
-        if self._rf_model is None:
+        if not self._pipeline or not self._modelTrained:
             return None
 
         X = pd.DataFrame([sensorValues])
-        y_pred = self._rf_model.predict(X)
-        return self.labelEncoder.inverse_transform(y_pred)[0]
+        X = X.reindex(columns=self._X_test.columns, fill_value=None)
 
+        try:
+            y_pred = self._pipeline.predict(X)
+            return self.labelEncoder.inverse_transform(y_pred)[0]
+        except Exception as e:
+            self.logger.error(f"Prediction failed: {e}")
+            return None
 
     def getFeatureImportance(self) -> Optional[Dict[str, float]]:
-        """
-        Returns a dictionary mapping feature names to their importance scores.
-        If the model is not trained, returns None.
-        """
-        if not self._modelTrained or self._rf_model is None:
-            self.logger.warning("Model is not trained. Feature importances unavailable.")
+        if not self._modelTrained or self._pipeline is None:
             return None
 
         try:
-            featureImportances = self._rf_model.feature_importances_
-            featureNames = self._rf_model.feature_names_in_
-            return dict(zip(featureNames, featureImportances))
-        except AttributeError:
-            self.logger.error("Unable to retrieve feature importances.")
+            clf = self._pipeline.named_steps["classifier"]
+            featureNames = self._X_test.columns
+            importances = clf.feature_importances_
+            return dict(zip(featureNames, importances))
+        except Exception as e:
+            self.logger.error(f"Feature importances retrieval failed: {e}")
             return None
-        
+
     def getAccuracy(self) -> Optional[float]:
-        """
-        Returns the accuracy score of the model using the last training/test split.
-        If the model was not trained successfully, returns None.
-        """
-        if not self._modelTrained or self._rf_model is None:
-            self.logger.warning("Model is not trained. Accuracy unavailable.")
+        if not self._modelTrained or self._pipeline is None:
             return None
 
         try:
-            X_test = self._X_test
-            y_test = self._y_test
-            y_pred = self._rf_model.predict(X_test)
-            return accuracy_score(y_test, y_pred)
-        except AttributeError:
-            self.logger.error("Test data unavailable. Cannot compute accuracy.")
+            y_pred = self._pipeline.predict(self._X_test)
+            return accuracy_score(self._y_test, y_pred)
+        except Exception as e:
+            self.logger.error(f"Accuracy calculation failed: {e}")
             return None
-        
+
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
-        if not self._modelTrained or self._rf_model is None:
+        if not self._modelTrained or self._pipeline is None:
             return None
 
         try:
-            y_pred = self._rf_model.predict(self._X_test)
+            y_pred = self._pipeline.predict(self._X_test)
             report = classification_report(
                 self._y_test,
                 y_pred,
@@ -135,7 +141,6 @@ class RandomForest:
                 zero_division=0
             )
 
-            # Filter only the labels, exclude 'accuracy', 'macro avg', etc.
             return {
                 label: {
                     "support": int(stats["support"]),
@@ -151,127 +156,118 @@ class RandomForest:
             return None
 
     def optimizeParameters(self, observations: List[ModelObservation]) -> Dict[str, Any]:
-        """
-        Performs two-stage hyperparameter tuning:
-        1. RandomizedSearchCV for broad exploration
-        2. GridSearchCV for fine-tuned refinement around best candidate
-        Returns the best parameter set found.
-        """
         data: List[Dict[str, Any]] = []
         labels: List[str] = []
 
-        for observation in observations:
-            data.append(observation.sensorValues)
-            labels.append(observation.label)
+        for obs in observations:
+            data.append(obs.sensorValues)
+            labels.append(obs.label)
 
         if not data or not labels:
             self.logger.warning("No data available for optimization.")
             return {}
 
-        X = pd.DataFrame.from_records(data)
+        X = pd.DataFrame(data)
         y = self.labelEncoder.fit_transform(labels)
 
-        try:
-            # Final 30% is held out for post-evaluation
-            X_trainval, X_test_final, y_trainval, y_test_final = train_test_split(X, y, test_size=0.3, random_state=42)
+        self._categoricalCols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+        numericalCols = X.select_dtypes(include=[np.number]).columns.tolist()
 
-            # --- Shared param space
-            baseGrid = {
-                'n_estimators': list(range(50, 501, 25)),
-                'max_depth': [None] + list(range(1, 41, 10)),
-                'min_samples_split': [2, 5, 10],
-                'min_samples_leaf': [1, 2, 4],
-                'max_features': ['sqrt', 'log2', None],
-                'class_weight': [None, 'balanced', 'balanced_subsample'],
-            }
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), self._categoricalCols),
+                ('num', 'passthrough', numericalCols)
+            ]
+        )
 
-            bootstrapGrid = {
-                **baseGrid,
-                'bootstrap': [True],
-                'oob_score': [True, False],
-            }
+        X_trainval, X_test_final, y_trainval, y_test_final = train_test_split(X, y, test_size=0.3, random_state=42)
 
-            noBootstrapGrid = {
-                **baseGrid,
-                'bootstrap': [False],
-                # no oob_score when bootstrap is False
-            }
+        baseGrid = {
+            'n_estimators': list(range(50, 501, 25)),
+            'max_depth': [None] + list(range(1, 41, 10)),
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4],
+            'max_features': ['sqrt', 'log2', None],
+            'class_weight': [None, 'balanced', 'balanced_subsample'],
+        }
 
-            def runSearch(grid):
-                search = RandomizedSearchCV(
-                    estimator=RandomForestClassifier(),
-                    param_distributions=grid,
-                    n_iter=30,
-                    scoring='accuracy',
-                    cv=3,
-                    n_jobs=-1,
-                    random_state=42,
-                    verbose=1,
-                    refit=True
-                )
-                search.fit(X_trainval, y_trainval)
-                return search
+        bootstrapGrid = {**baseGrid, 'bootstrap': [True], 'oob_score': [True, False]}
+        noBootstrapGrid = {**baseGrid, 'bootstrap': [False]}
 
-            search1 = runSearch(bootstrapGrid)
-            search2 = runSearch(noBootstrapGrid)
-
-            bestSearch = search1 if search1.best_score_ >= search2.best_score_ else search2
-            bestRandomParams = bestSearch.best_params_
-            self.logger.info(f"Stage 1 best parameters: {bestRandomParams}")
-
-            # --- Stage 2: Refined Grid around best
-            def expandRange(val, step, minimum=1):
-                if isinstance(val, int):
-                    return sorted(set([
-                        max(val - step, minimum),
-                        val,
-                        val + step
-                    ]))
-                return [val]
-
-            refinedGrid = {
-                'n_estimators': expandRange(bestRandomParams['n_estimators'], 50, minimum=10),
-                'max_depth': expandRange(bestRandomParams['max_depth'], 10, minimum=1) if bestRandomParams['max_depth'] else [None],
-                'min_samples_split': expandRange(bestRandomParams['min_samples_split'], 2, minimum=2),
-                'min_samples_leaf': expandRange(bestRandomParams['min_samples_leaf'], 1, minimum=1),
-                'max_features': [bestRandomParams['max_features']],
-                'class_weight': [bestRandomParams['class_weight']],
-                'bootstrap': [bestRandomParams['bootstrap']]
-            }
-
-            if bestRandomParams['bootstrap']:
-                refinedGrid['oob_score'] = [bestRandomParams.get('oob_score', False)]
-
-            gridSearch = GridSearchCV(
-                estimator=RandomForestClassifier(),
-                param_grid=refinedGrid,
+        def runSearch(param_grid):
+            pipeline = Pipeline([
+                ('preprocessor', preprocessor),
+                ('classifier', RandomForestClassifier())
+            ])
+            search = RandomizedSearchCV(
+                estimator=pipeline,
+                param_distributions={'classifier__' + k: v for k, v in param_grid.items()},
+                n_iter=30,
                 scoring='accuracy',
-                cv=5,
+                cv=3,
+                random_state=42,
                 n_jobs=-1,
                 verbose=1,
                 refit=True
             )
+            search.fit(X_trainval, y_trainval)
+            return search
 
-            gridSearch.fit(X_trainval, y_trainval)
-            bestParams = gridSearch.best_params_
-            self.logger.info(f"Stage 2 best parameters: {bestParams}")
-            self.params = bestParams
+        search1 = runSearch(bootstrapGrid)
+        search2 = runSearch(noBootstrapGrid)
+        bestSearch = search1 if search1.best_score_ >= search2.best_score_ else search2
+        bestRandomParams = {
+            k.replace('classifier__', ''): v
+            for k, v in bestSearch.best_params_.items()
+        }
+        self.logger.info(f"Stage 1 best parameters: {bestRandomParams}")
 
-            # Evaluate final performance on independent test set
-            finalAccuracy = accuracy_score(y_test_final, gridSearch.best_estimator_.predict(X_test_final))
-            self.logger.info(f"Final accuracy on held-out test set: {round(finalAccuracy, 4)}")
+        def expandRange(val, step, minimum=1):
+            if isinstance(val, int):
+                return sorted(set([max(val - step, minimum), val, val + step]))
+            return [val]
 
-            # Store the trained model and final test set
-            self._rf_model = gridSearch.best_estimator_
-            self._X_test = X_test_final
-            self._y_test = y_test_final
-            self._modelTrained = True
+        refinedGrid = {
+            'n_estimators': expandRange(bestRandomParams['n_estimators'], 50, 10),
+            'max_depth': expandRange(bestRandomParams['max_depth'], 10, 1) if bestRandomParams['max_depth'] else [None],
+            'min_samples_split': expandRange(bestRandomParams['min_samples_split'], 2, 2),
+            'min_samples_leaf': expandRange(bestRandomParams['min_samples_leaf'], 1, 1),
+            'max_features': [bestRandomParams['max_features']],
+            'class_weight': [bestRandomParams['class_weight']],
+            'bootstrap': [bestRandomParams['bootstrap']],
+        }
+        if bestRandomParams['bootstrap']:
+            refinedGrid['oob_score'] = [bestRandomParams.get('oob_score', False)]
 
-            return bestParams
+        gridSearch = GridSearchCV(
+            Pipeline([
+                ('preprocessor', preprocessor),
+                ('classifier', RandomForestClassifier())
+            ]),
+            param_grid={'classifier__' + k: v for k, v in refinedGrid.items()},
+            scoring='accuracy',
+            cv=5,
+            n_jobs=-1,
+            verbose=1
+        )
+        gridSearch.fit(X_trainval, y_trainval)
+        bestParams = {
+            k.replace('classifier__', ''): v
+            for k, v in gridSearch.best_params_.items()
+        }
 
-        except Exception as e:
-            self.logger.error(f"Hyperparameter optimization failed: {e}")
-            return {}
-        
+        self.logger.info(f"Stage 2 best parameters: {bestParams}")
+        self.params = bestParams
+
+        self._pipeline = gridSearch.best_estimator_
+        self._X_test = X_test_final
+        self._y_test = y_test_final
+        self._modelTrained = True
+
+        finalAccuracy = accuracy_score(y_test_final, self._pipeline.predict(X_test_final))
+        self.logger.info(f"Final accuracy on held-out test set: {round(finalAccuracy, 4)}")
+
+        return bestParams
+
     def getModelParameters(self) -> RandomForestParams:
-       return self.params
+        return self.params

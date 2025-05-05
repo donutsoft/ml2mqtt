@@ -1,24 +1,28 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 import logging
 from typing import TypedDict, Optional, List, Dict, Any, Union
 from ModelStore import ModelObservation
 
-# --- Define parameter schema for KNN
+
 class KNNParams(TypedDict):
     n_neighbors: int
     weights: str  # 'uniform' or 'distance'
     p: int        # 1 = Manhattan, 2 = Euclidean
+
 
 DEFAULT_KNN_PARAMS: KNNParams = {
     "n_neighbors": 5,
     "weights": "uniform",
     "p": 2
 }
+
 
 class KNNClassifier:
     def __init__(self, params: Optional[KNNParams] = None):
@@ -28,9 +32,10 @@ class KNNClassifier:
         self.logger.info(f"KNNClassifier initialized with params: {self.params}")
         self._X_test: Optional[pd.DataFrame] = None
         self._y_test: Optional[np.ndarray] = None
-        self._knn_model: Optional[KNeighborsClassifier] = None
+        self._pipeline: Optional[Pipeline] = None
         self.labelEncoder: LabelEncoder = LabelEncoder()
         self._modelTrained: bool = False
+        self._categoricalCols: List[str] = []
 
     def populateDataframe(self, observations: List[ModelObservation]) -> None:
         data: List[Dict[str, Any]] = []
@@ -48,52 +53,65 @@ class KNNClassifier:
         X = pd.DataFrame.from_records(data)
         y = self.labelEncoder.fit_transform(labels)
 
+        self._categoricalCols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+        numericalCols = X.select_dtypes(include=[np.number]).columns.tolist()
+
+        preprocessor = ColumnTransformer([
+            ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), self._categoricalCols),
+            ('num', 'passthrough', numericalCols)
+        ])
+
+        self._pipeline = Pipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('classifier', KNeighborsClassifier(**self.params))
+        ])
+
         try:
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+            self._pipeline.fit(X_train, y_train)
             self._X_test = X_test
             self._y_test = y_test
-
-            knn_model = KNeighborsClassifier(**self.params)
-            knn_model.fit(X_train, y_train)
-            self._knn_model = knn_model
             self._modelTrained = True
-        except ValueError:
-            self.logger.info("Not enough data to train the model")
+        except ValueError as e:
+            self.logger.info(f"Not enough data to train the model: {e}")
             self._modelTrained = False
 
     def predictLabel(self, sensorValues: Dict[str, Any]) -> Optional[str]:
-        if self._knn_model is None:
+        if not self._pipeline or not self._modelTrained:
             return None
 
         X = pd.DataFrame([sensorValues])
-        y_pred = self._knn_model.predict(X)
-        return self.labelEncoder.inverse_transform(y_pred)[0]
+        X = X.reindex(columns=self._X_test.columns, fill_value=None)
+
+        try:
+            y_pred = self._pipeline.predict(X)
+            return self.labelEncoder.inverse_transform(y_pred)[0]
+        except Exception as e:
+            self.logger.error(f"Prediction failed: {e}")
+            return None
 
     def getFeatureImportance(self) -> Optional[Dict[str, float]]:
-        # KNN doesn't have feature importance
         self.logger.info("KNN does not provide feature importances.")
         return None
 
     def getAccuracy(self) -> Optional[float]:
-        if not self._modelTrained or self._knn_model is None:
+        if not self._modelTrained or self._pipeline is None:
             self.logger.warning("Model is not trained. Accuracy unavailable.")
             return None
 
         try:
-            X_test = self._X_test
-            y_test = self._y_test
-            y_pred = self._knn_model.predict(X_test)
-            return accuracy_score(y_test, y_pred)
-        except AttributeError:
-            self.logger.error("Test data unavailable. Cannot compute accuracy.")
+            y_pred = self._pipeline.predict(self._X_test)
+            return accuracy_score(self._y_test, y_pred)
+        except Exception as e:
+            self.logger.error(f"Accuracy calculation failed: {e}")
             return None
 
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
-        if not self._modelTrained or self._knn_model is None:
+        if not self._modelTrained or self._pipeline is None:
             return None
 
         try:
-            y_pred = self._knn_model.predict(self._X_test)
+            y_pred = self._pipeline.predict(self._X_test)
             report = classification_report(
                 self._y_test,
                 y_pred,
@@ -118,9 +136,6 @@ class KNNClassifier:
             return None
 
     def optimizeParameters(self, observations: List[ModelObservation]) -> Dict[str, Any]:
-        """
-        Hyperparameter tuning for KNN.
-        """
         data: List[Dict[str, Any]] = []
         labels: List[str] = []
 
@@ -135,17 +150,30 @@ class KNNClassifier:
         X = pd.DataFrame.from_records(data)
         y = self.labelEncoder.fit_transform(labels)
 
-        try:
-            X_trainval, X_test_final, y_trainval, y_test_final = train_test_split(X, y, test_size=0.3, random_state=42)
+        self._categoricalCols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+        numericalCols = X.select_dtypes(include=[np.number]).columns.tolist()
 
-            paramGrid = {
-                "n_neighbors": list(range(1, 31)),
-                "weights": ["uniform", "distance"],
-                "p": [1, 2]  # 1 = Manhattan, 2 = Euclidean
-            }
+        preprocessor = ColumnTransformer([
+            ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), self._categoricalCols),
+            ('num', 'passthrough', numericalCols)
+        ])
+
+        X_trainval, X_test_final, y_trainval, y_test_final = train_test_split(X, y, test_size=0.3, random_state=42)
+
+        paramGrid = {
+            "classifier__n_neighbors": list(range(1, 31)),
+            "classifier__weights": ["uniform", "distance"],
+            "classifier__p": [1, 2]
+        }
+
+        try:
+            pipeline = Pipeline([
+                ('preprocessor', preprocessor),
+                ('classifier', KNeighborsClassifier())
+            ])
 
             search = RandomizedSearchCV(
-                estimator=KNeighborsClassifier(),
+                estimator=pipeline,
                 param_distributions=paramGrid,
                 n_iter=20,
                 scoring='accuracy',
@@ -157,14 +185,19 @@ class KNNClassifier:
             )
 
             search.fit(X_trainval, y_trainval)
-            bestParams = search.best_params_
+            bestParamsFull = search.best_params_
+            bestParams = {
+                k.replace('classifier__', ''): v
+                for k, v in bestParamsFull.items()
+            }
+
             self.logger.info(f"Best KNN parameters: {bestParams}")
             self.params = bestParams
 
             finalAccuracy = accuracy_score(y_test_final, search.best_estimator_.predict(X_test_final))
             self.logger.info(f"Final accuracy on held-out test set: {round(finalAccuracy, 4)}")
 
-            self._knn_model = search.best_estimator_
+            self._pipeline = search.best_estimator_
             self._X_test = X_test_final
             self._y_test = y_test_final
             self._modelTrained = True
