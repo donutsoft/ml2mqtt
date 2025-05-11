@@ -7,8 +7,8 @@ class StringConverterPreprocessor(BasePreprocessor):
     type: ClassVar[str] = "string_converter"
     description = "Converts string values to floats and replaces 'unknown'/'unavailable' with None"
     
-    def __init__(self, entity: Optional[str] = None, **kwargs):
-        super().__init__(entity, **kwargs)
+    def __init__(self, dbId: int, **kwargs):
+        super().__init__(dbId, **kwargs)
         self.unknown_values = {"unknown", "unavailable", "none", "null"}
     
     def process(self, observation: Dict[str, Any]) -> Dict[str, Any]:

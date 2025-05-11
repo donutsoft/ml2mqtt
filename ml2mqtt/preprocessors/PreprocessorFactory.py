@@ -68,7 +68,7 @@ class PreprocessorFactory:
         #    for processor in self._preprocessor_types.values()
         #]
     
-    def create(self, preprocessor_type: str, entity: Optional[str] = None, params: Dict[str, Any] = None) -> BasePreprocessor:
+    def create(self, preprocessor_type: str, dbId: int, params: Dict[str, Any] = None) -> BasePreprocessor:
         """
         Create a preprocessor instance.
         
@@ -87,4 +87,4 @@ class PreprocessorFactory:
             raise ValueError(f"Unknown preprocessor type: {preprocessor_type}")
             
         preprocessor_class = self._preprocessor_types[preprocessor_type]
-        return preprocessor_class(entity=entity, **(params or {})) 
+        return preprocessor_class(dbId, **(params or {})) 

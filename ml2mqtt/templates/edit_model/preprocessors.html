@@ -60,9 +60,23 @@
       cursor: grab;
     }
 
+    .producesConsumes {
+      background-color: #27384a;
+      padding: 0.5rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
     .preprocessorRow.drag-over {
       background-color: #27384a;
       border: 2px dashed #4fa3f7;
+    }
+
+    .sectionTitle {
+      font-weight: bold;
+      font-size: 1.05rem;
+      color: #7e8c9c;
+      margin-bottom: 0.5rem;
     }
 
     .subText {
@@ -99,52 +113,96 @@
   <div class="settingsGroup">
     <h3>Preprocessors</h3>
 
-    <div id="preprocessorList">
-      {% for idx, preprocessor in enumerate(model.preprocessors) %}
-        <div class="preprocessorRow" draggable="true"
-             data-index="{{ idx }}"
-             ondragstart="onDragStart(event)"
-             ondragover="onDragOver(event)"
-             ondragend="onDragEnd(event)"
-             ondrop="onDrop(event)">
-          <div style="flex: 1;">
-            <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 0.2rem;">
-              {{ preprocessor.type }}
-            </div>
+<!-- Root Produces Section (Not Draggable) -->
+<div class="mqttRow" style="background-color: #27384a; margin-bottom: 1rem; cursor: default;">
+  <div style="flex: 1;">
+    <div class="sectionTitle">MQTT</div>
 
-            {% if preprocessor.description %}
-              <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
-                {{ preprocessor.description }}
-              </h4>
-            {% endif %}
-
-            {% if preprocessor.config_string %}
-              <h5 style="margin: 0.4rem 0 0.5rem 0; font-weight: normal; color: #9ba9b4; font-size: 0.95rem;">
-                {{ preprocessor.config_string }}
-              </h5>
-            {% endif %}
-
-            {% if preprocessor.params %}
-              <div class="subText" style="margin-top: 0.25rem;">
-                {% for key, value in preprocessor.params.items() %}
-                  {{ key }}: {{ value }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
-              </div>
-            {% endif %}
-          </div>
-          <div class="deleteColumn">
-            <span class="deleteLink" onclick="removePreprocessor({{ idx }})">Delete</span>
-          </div>
-        </div>
-      {% else %}
-        <p style="color: #7e8c9c;">No preprocessors defined yet.</p>
-      {% endfor %}
-    </div>
-
-    <div style="text-align: right; margin-top: 2rem;">
-      <button class="btn primary" onclick="togglePreprocessorModal()">➕ Add Preprocessor</button>
+    <!-- Produces Section -->
+    <div class="producesConsumes">
+      <div class="sectionTitle">Produces</div>
+      <div class="subText">
+        {% if model.recentMqtt %}
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 4px;">Sensor</th>
+              <th style="text-align: left; padding: 4px;">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for key, value in model.recentMqtt.items() %}
+              <tr>
+                <td style="padding: 4px; border-bottom: 1px solid #2c3e50;">{{ key }}</td>
+                <td style="padding: 4px; border-bottom: 1px solid #2c3e50;">{{ value }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p>No MQTT inputs available.</p>
+        {% endif %}
+      </div>
     </div>
   </div>
+</div>
+
+<!-- Preprocessors List (Draggable) -->
+<div id="preprocessorList">
+  {% for idx, preprocessor in enumerate(model.preprocessors) %}
+    <div class="preprocessorRow" data-index="{{ idx }}" draggable="true"
+         ondragstart="onDragStart(event)"
+         ondragover="onDragOver(event)"
+         ondragend="onDragEnd(event)"
+         ondrop="onDrop(event)">
+      <div style="flex: 1;">
+        <div class="sectionTitle">{{ preprocessor.type }}</div>
+
+        <!-- Consumes Section -->
+        <div class="producesConsumes">
+          <div class="sectionTitle">Consumes</div>
+          <div class="subText">
+            {% if preprocessor.consumes %}
+              <ul>
+                {% for key, value in preprocessor.consumes.items() %}
+                  <li>{{ key }}: {{ value }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>No inputs defined.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Produces Section -->
+        <div class="producesConsumes">
+          <div class="sectionTitle">Produces</div>
+          <div class="subText">
+            {% if preprocessor.produces %}
+              <ul>
+                {% for key, value in preprocessor.produces.items() %}
+                  <li>{{ key }}: {{ value }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>No outputs defined.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="deleteColumn">
+        <span class="deleteLink">Delete</span>
+      </div>
+    </div>
+  {% else %}
+    <p style="color: #7e8c9c;">No preprocessors defined yet.</p>
+  {% endfor %}
+</div>
+
+<!-- Add Preprocessor Button -->
+<div style="text-align: right; margin-top: 1rem;">
+  <button class="btn primary" onclick="togglePreprocessorModal()">➕ Add Preprocessor</button>
+</div>
 
   <!-- Modal -->
   <div id="preprocessorModal" class="modalOverlay" style="display: none;">
@@ -260,17 +318,39 @@
         else showToast("Error adding preprocessor", true);
       });
     }
-
     function removePreprocessor(index) {
-      fetch(deletePreprocessorUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index })
-      }).then(res => {
-        if (res.ok) window.location.reload();
-        else showToast("Error removing preprocessor", true);
-      });
-    }
+    fetch(deletePreprocessorUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ index })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const row = document.querySelector(`.preprocessorRow[data-index="${index}"]`);
+        if (row) row.remove();
+        updateIndices();
+      } else {
+        console.error("Error removing preprocessor: ", data.error);
+      }
+    })
+    .catch(err => console.error("Error removing preprocessor: ", err));
+  }
+
+  function updateIndices() {
+    const preprocessorList = document.getElementById("preprocessorList");
+    const rows = preprocessorList.querySelectorAll(".preprocessorRow");
+    rows.forEach((row, idx) => {
+      row.setAttribute("data-index", idx);
+    });
+    if (rows.length === 0) {
+    document.getElementById("preprocessorList").innerHTML = `
+      <p style="color: #7e8c9c;">No preprocessors defined yet.</p>
+    `;
+  }
+
+  }
+
 
     let dragStartIndex = null;
 
@@ -306,6 +386,12 @@
     }
 
     document.addEventListener("DOMContentLoaded", populatePreprocessorTypeDropdown);
+    document.getElementById("preprocessorList").addEventListener("click", (event) => {
+      if (event.target.classList.contains("deleteLink")) {
+        const index = event.target.closest(".preprocessorRow").dataset.index;
+        removePreprocessor(Number(index));
+      }
+    });
   </script>
 </body>
 </html>

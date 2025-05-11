@@ -5,7 +5,7 @@ class BasePreprocessor(ABC):
     """Base class for all preprocessors."""
     
     # Static metadata that must be defined by subclasses
-    id: ClassVar[str] = "base"
+    type: ClassVar[str] = "type"
     description: ClassVar[str] = "Base preprocessor"  # Human-readable description
     
     # Static configuration schema that must be defined by subclasses
@@ -19,7 +19,7 @@ class BasePreprocessor(ABC):
         }
     }
     
-    def __init__(self, entity: Optional[str] = None, **kwargs):
+    def __init__(self, dbId: int, **kwargs):
         """
         Initialize the preprocessor.
         
@@ -27,7 +27,7 @@ class BasePreprocessor(ABC):
             entity: Optional entity name to process. If None, processes all entities.
             **kwargs: Additional configuration parameters
         """
-        self.entity = entity
+        self.dbId = dbId
         self.config = kwargs
     
     @abstractmethod
@@ -48,8 +48,8 @@ class BasePreprocessor(ABC):
         Convert preprocessor configuration to dictionary.
         """
         return {
-            "type": self.id,
-            "entity": self.entity,
+            "type": self.type,
+            "dbId": self.dbId,
             "config": self.config
         }
     

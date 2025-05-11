@@ -30,6 +30,7 @@ class ModelService:
         self._allParams: Dict[str, Dict[str, Any]] = {}
         self._populateModel()
         self._loadPostprocessors()
+        self._loadPreprocessors()
 
     def dispose(self) -> None:
         topic = self.getMqttTopic()
@@ -70,6 +71,20 @@ class ModelService:
             except ValueError as e:
                 self._logger.warning(f"Failed to load postprocessor: {e}")
 
+
+    def _loadPreprocessors(self) -> None:
+        """Load postprocessors from model settings."""
+        preprocessors = self._modelstore.getPreprocessors()
+        self._preprocessors = []
+        
+        for preprocessor_data in preprocessors:
+            try:
+                postprocessor = self._preprocessorFactory.create(preprocessor_data.type, preprocessor_data.id, preprocessor_data.params)
+                self._preprocessors.append(postprocessor)
+            except ValueError as e:
+                self._logger.warning(f"Failed to load preprocessor: {e}")
+
+
     def getEntityKeys(self) -> List[EntityKey]:
         features = self._model.getFeatureImportance() or {}
         entities = self._modelstore.getEntityKeys()
@@ -105,10 +120,18 @@ class ModelService:
                 label = entity["label"]
             elif "entity_id" in entity and "state" in entity:
                 entityMap[entity["entity_id"]] = entity["state"]
+        self._modelstore.saveDict("mqtt_observation", entityMap)
+        
+        # Apply Preprocessors
+        for preprocessor in self._preprocessors:
+            entityMap = preprocessor.process(entityMap)
+            if not entityMap:
+                self._logger.debug("No entity values to process.")
+                return
 
         if not entityMap:
             self._logger.debug("No entity values to process.")
-            return
+            return        
 
         entityValues = self._modelstore.sortEntityValues(entityMap, False)
         if label != DISABLED_LABEL:
@@ -247,9 +270,9 @@ class ModelService:
             dbId = self._modelstore.addPreprocessor(type, params)
             # Then create the postprocessor instance
             preprocessor = self._preprocessorFactory.create(type, dbId, params)
-            self._postprocessors.append(preprocessor)
+            self._preprocessors.append(preprocessor)
         except Exception as e:
-            # If postprocessor creation fails, delete from database
+            # If postprocessor creation fails, delete from database.
             if 'dbId' in locals():
                 self._modelstore.deletePreprocessor(dbId)
             raise e
@@ -298,4 +321,7 @@ class ModelService:
         settings["learning_type"] = learningType
         self._logger.info(f"Setting learning type: {learningType}")
         self._modelstore.saveDict("model_settings", settings)
+
+    def getMostRecentMqttObservation(self):
+        return self._modelstore.getDict("mqtt_observation")
     

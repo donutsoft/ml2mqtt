@@ -110,6 +110,8 @@ def init_model_routes(model_manager: ModelManager):
             model.postprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPostprocessors())
         elif section == "preprocessors":
             logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors()))}")
+            model.recentMqtt = model_manager.getModel(modelName).getMostRecentMqttObservation()
+            logger.error("Recent MQTT:" + str(model.recentMqtt))
             model.preprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors())
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
@@ -284,7 +286,7 @@ def init_model_routes(model_manager: ModelManager):
             logger.error(f"Error adding postprocessor: {e}")
             return jsonify({"error": "Internal server error"}), 500
 
-    @model_bp.route("/edit-model/<string:modelName>/preprocessor/add", methods=["POST"]) # FIXME
+    @model_bp.route("/edit-model/<string:modelName>/preprocessor/add", methods=["POST"])
     def addPreprocessor(modelName: str) -> Response:
         try:
             data = request.get_json()
@@ -314,21 +316,34 @@ def init_model_routes(model_manager: ModelManager):
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
 
-
     @model_bp.route("/edit-model/<string:modelName>/preprocessor/delete", methods=["POST"])
     def deletePreprocessor(modelName: str) -> Response:
         try:
             data = request.get_json()
-            if data is None or "index" not in data:
-                return jsonify({"error": "Missing index in payload"}), 400
-                
-            model_manager.getModel(modelName).removePreprocessor(data["index"])
-            return jsonify({"success": True})
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
-        except Exception as e:
-            return jsonify({"error": "Internal server error"}), 500
+            if not data or "index" not in data:
+                return jsonify({"success": False, "error": "Missing 'index' in payload"}), 400
+            
+            index = data["index"]
 
+            if not isinstance(index, int):
+                return jsonify({"success": False, "error": "'index' must be an integer"}), 400
+
+            model = model_manager.getModel(modelName)
+            if not model:
+                return jsonify({"success": False, "error": f"Model '{modelName}' not found"}), 404
+
+            try:
+                model.removePreprocessor(index)
+            except IndexError:
+                return jsonify({"success": False, "error": f"Index '{index}' out of range"}), 400
+            except ValueError as e:
+                return jsonify({"success": False, "error": str(e)}), 400
+
+            return jsonify({"success": True})
+
+        except Exception as e:
+            app.logger.exception(f"Error deleting preprocessor for model '{modelName}': {e}")
+            return jsonify({"success": False, "error": "Internal server error"}), 500
 
     @model_bp.route("/edit-model/<string:modelName>/postprocessor/reorder", methods=["POST"])
     def reorderPostprocessors(modelName: str) -> Response:
