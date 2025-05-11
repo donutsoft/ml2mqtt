@@ -15,7 +15,9 @@ class StringConverterPreprocessor(BasePreprocessor):
         result = observation.copy()
         
         # Process either a single entity or all entities
-        entities_to_process = [self.entity] if self.entity else result.keys()
+        #entities_to_process = [self.entity] if self.entity else result.keys()
+
+        entities_to_process = result.keys()
         
         for entity in entities_to_process:
             if entity not in result:

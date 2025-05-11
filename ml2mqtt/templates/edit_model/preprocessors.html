@@ -101,6 +101,81 @@
     .fadeText.visible {
       opacity: 1;
     }
+
+    .standardTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.standardTable th, .standardTable td {
+  text-align: left;
+  padding: 4px;
+  border-bottom: 1px solid #2c3e50;
+  word-wrap: break-word;
+}
+
+.mqttRow .producesConsumes {
+  margin-bottom: 0;  /* Removes extra space to align with preprocessors */
+}
+
+.preprocessorRow, .nonDraggableRow {
+  border: 1px solid #2c3e50;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  background-color: #1a2735;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preprocessorRow {
+  cursor: grab;
+}
+
+.nonDraggableRow {
+  cursor: default;  /* No drag cursor */
+  opacity: 0.95;    /* Slightly different opacity to indicate non-draggable */
+}
+
+.producesConsumes {
+  background-color: #27384a;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.standardTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.standardTable th, .standardTable td {
+  text-align: left;
+  padding: 4px;
+  border-bottom: 1px solid #2c3e50;
+  word-wrap: break-word;
+}
+
+.producesConsumes {
+  background-color: #27384a;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.listItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.listItem {
+  font-size: 0.85rem;
+}
+
   </style>
 </head>
 <body>
@@ -114,7 +189,7 @@
     <h3>Preprocessors</h3>
 
 <!-- Root Produces Section (Not Draggable) -->
-<div class="mqttRow" style="background-color: #27384a; margin-bottom: 1rem; cursor: default;">
+<div class="mqttRow nonDraggableRow">
   <div style="flex: 1;">
     <div class="sectionTitle">MQTT</div>
 
@@ -123,18 +198,24 @@
       <div class="sectionTitle">Produces</div>
       <div class="subText">
         {% if model.recentMqtt %}
-        <table style="width: 100%; border-collapse: collapse;">
+        <table class="standardTable">
           <thead>
             <tr>
-              <th style="text-align: left; padding: 4px;">Sensor</th>
-              <th style="text-align: left; padding: 4px;">Value</th>
+              <th>Sensor</th>
+              <th>Value</th>
             </tr>
           </thead>
           <tbody>
-            {% for key, value in model.recentMqtt.items() %}
+            {% for key, value in sorted(model.recentMqtt.items()) %}
               <tr>
-                <td style="padding: 4px; border-bottom: 1px solid #2c3e50;">{{ key }}</td>
-                <td style="padding: 4px; border-bottom: 1px solid #2c3e50;">{{ value }}</td>
+                <td>{{ key }}</td>
+                <td>
+                  {% if value is number or value == None %}
+                    {{ value }}
+                  {% else %}
+                    "{{ value }}"
+                  {% endif %}
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -161,13 +242,13 @@
         <!-- Consumes Section -->
         <div class="producesConsumes">
           <div class="sectionTitle">Consumes</div>
-          <div class="subText">
+          <div class="subText listItems">
             {% if preprocessor.consumes %}
-              <ul>
-                {% for key, value in preprocessor.consumes.items() %}
-                  <li>{{ key }}: {{ value }}</li>
+              <span>
+                {% for key in sorted(preprocessor.consumes.keys()) %}
+                  <span class="listItem">{{ key }}</span>{% if not loop.last %}<span class="separator">,</span>{% endif %}
                 {% endfor %}
-              </ul>
+              </span>
             {% else %}
               <p>No inputs defined.</p>
             {% endif %}
@@ -179,19 +260,37 @@
           <div class="sectionTitle">Produces</div>
           <div class="subText">
             {% if preprocessor.produces %}
-              <ul>
-                {% for key, value in preprocessor.produces.items() %}
-                  <li>{{ key }}: {{ value }}</li>
+            <table class="standardTable">
+              <thead>
+                <tr>
+                  <th>Output</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for key, value in sorted(preprocessor.produces.items()) %}
+                  <tr>
+                    <td>{{ key }}</td>
+                    <td>
+                      {% if value is number or value == None %}
+                        {{ value }}
+                      {% else %}
+                        "{{ value }}"
+                      {% endif %}
+                    </td>
+                  </tr>
                 {% endfor %}
-              </ul>
+              </tbody>
+            </table>
             {% else %}
               <p>No outputs defined.</p>
             {% endif %}
           </div>
         </div>
-      </div>
-      <div class="deleteColumn">
-        <span class="deleteLink">Delete</span>
+        <div class="deleteColumn">
+          <span class="deleteLink">Delete</span>
+        </div>
+  
       </div>
     </div>
   {% else %}
@@ -390,6 +489,7 @@
       if (event.target.classList.contains("deleteLink")) {
         const index = event.target.closest(".preprocessorRow").dataset.index;
         removePreprocessor(Number(index));
+        window.location.reload();
       }
     });
   </script>

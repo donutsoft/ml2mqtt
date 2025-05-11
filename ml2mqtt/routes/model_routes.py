@@ -10,7 +10,7 @@ from utils.helpers import slugify
 from postprocessors.PostprocessorFactory import PostprocessorFactory
 from preprocessors.PreprocessorFactory import PreprocessorFactory
 from ModelManager import ModelManager
-
+from PreprocessorEvaluator import PreprocessorEvaluator
 logger = logging.getLogger("ml2mqtt.routes.model")
 model_bp = Blueprint('model', __name__)
 
@@ -111,8 +111,10 @@ def init_model_routes(model_manager: ModelManager):
         elif section == "preprocessors":
             logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors()))}")
             model.recentMqtt = model_manager.getModel(modelName).getMostRecentMqttObservation()
-            logger.error("Recent MQTT:" + str(model.recentMqtt))
-            model.preprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors())
+            evaluator = PreprocessorEvaluator(model_manager.getModel(modelName).getPreprocessors())
+            #model.preprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors())
+            model.preprocessors = evaluator.evaluate(model.recentMqtt)
+            
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
         elif section == "mqtt":
