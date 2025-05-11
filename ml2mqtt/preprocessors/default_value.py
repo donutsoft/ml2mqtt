@@ -1,11 +1,11 @@
 from typing import Dict, Any, Optional, ClassVar
-from ..ModelStore import ModelStore
+from ModelStore import ModelStore
 from .base import BasePreprocessor
 
 class DefaultValuePreprocessor(BasePreprocessor):
     """Replaces None values with default values from ModelStore."""
     
-    id: ClassVar[str] = "default_value"
+    type: ClassVar[str] = "default_value"
     description: ClassVar[str] = "Replaces None values with default values from ModelStore"
     
     config_schema: ClassVar[Dict[str, Any]] = {

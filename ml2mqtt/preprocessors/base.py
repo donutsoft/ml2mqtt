@@ -5,7 +5,7 @@ class BasePreprocessor(ABC):
     """Base class for all preprocessors."""
     
     # Static metadata that must be defined by subclasses
-    id: ClassVar[str] = "base"  # Unique identifier for the preprocessor
+    id: ClassVar[str] = "base"
     description: ClassVar[str] = "Base preprocessor"  # Human-readable description
     
     # Static configuration schema that must be defined by subclasses

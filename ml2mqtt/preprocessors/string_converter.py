@@ -1,10 +1,10 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, ClassVar
 from .base import BasePreprocessor
 
 class StringConverterPreprocessor(BasePreprocessor):
     """Converts string values to floats and handles unknown values."""
     
-    name = "string_converter"
+    type: ClassVar[str] = "string_converter"
     description = "Converts string values to floats and replaces 'unknown'/'unavailable' with None"
     
     def __init__(self, entity: Optional[str] = None, **kwargs):

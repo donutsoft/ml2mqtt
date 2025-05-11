@@ -21,8 +21,8 @@ class PreprocessorFactory:
             if filename.endswith('.py') and not filename.startswith('__'):
                 module_name = filename[:-3]
                 try:
-                    module = importlib.import_module(f'.{module_name}', package=__name__)
-                    
+                    module = importlib.import_module(f'.{module_name}', package='preprocessors')
+
                     # Look for classes that inherit from BasePreprocessor
                     for attr_name in dir(module):
                         attr = getattr(module, attr_name)
@@ -35,16 +35,38 @@ class PreprocessorFactory:
                     self._logger.error(f"Failed to load preprocessor module {module_name}: {e}")
     
     def get_available_preprocessors(self) -> List[Dict[str, Any]]:
+
         """Get a list of all available preprocessors with their metadata."""
-        return [
-            {
-                "id": processor.id,
+        preprocessors = []
+        for processor in self._preprocessor_types.values():
+            # Skip the base processor
+            if processor.type == "base" or processor == BasePreprocessor:
+                continue
+                
+            self._logger.info(f"Processor: {processor}")
+            schema = processor.config_schema
+            if schema and "required" in schema and isinstance(schema["required"], set):
+                schema = schema.copy()
+                schema["required"] = list(schema["required"])  # sets -> lists
+
+            preprocessors.append({
                 "type": processor.type,
                 "description": processor.description,
-                "config_schema": processor.config_schema
-            }
-            for processor in self._preprocessor_types.values()
-        ]
+                "config_schema": schema
+            })
+        return preprocessors
+
+
+        #"""Get a list of all available preprocessors with their metadata."""
+        #return [
+        #    {
+        #        "id": processor.id,
+        #        "type": processor.type,
+        #        "description": processor.description,
+        #        "config_schema": processor.config_schema
+        #    }
+        #    for processor in self._preprocessor_types.values()
+        #]
     
     def create(self, preprocessor_type: str, entity: Optional[str] = None, params: Dict[str, Any] = None) -> BasePreprocessor:
         """

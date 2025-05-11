@@ -8,6 +8,8 @@ from classifiers.KNNClassifier import KNNClassifier, KNNParams
 from MqttClient import MqttClient
 from postprocessors.PostprocessorFactory import PostprocessorFactory
 from postprocessors.base import BasePostprocessor
+from preprocessors.base import BasePreprocessor
+from preprocessors.PreprocessorFactory import PreprocessorFactory
 
 DISABLED_LABEL = "Disabled"
 
@@ -21,6 +23,9 @@ class ModelService:
         self._postProcessorFactory = PostprocessorFactory()
         self._postprocessors: List[BasePostprocessor] = []
 
+        self._preprocessorFactory = PreprocessorFactory()
+        self._preprocessors: List[BasePreprocessor] = []
+        
         self._modelType: str
         self._allParams: Dict[str, Dict[str, Any]] = {}
         self._populateModel()
@@ -214,8 +219,12 @@ class ModelService:
         self._populateModel()
 
     def getPostprocessors(self) -> List[BasePostprocessor]:
-        """Get list of post processors."""
+        """Get list of postprocessors."""
         return self._postprocessors
+
+    def getPreprocessors(self) -> List[BasePreprocessor]:
+        """Get list of preprocessors."""
+        return self._preprocessors
 
     def addPostprocessor(self, type: str, params: Dict[str, Any]) -> None:
         """Add a new postprocessor."""
@@ -231,12 +240,43 @@ class ModelService:
                 self._modelstore.deletePostprocessor(dbId)
             raise e
 
+    def addPreprocessor(self, type: str, params: Dict[str, Any]) -> None:
+        """Add a new preprocessor."""
+        try:
+            # First add to database to get the ID
+            dbId = self._modelstore.addPreprocessor(type, params)
+            # Then create the postprocessor instance
+            preprocessor = self._preprocessorFactory.create(type, dbId, params)
+            self._postprocessors.append(preprocessor)
+        except Exception as e:
+            # If postprocessor creation fails, delete from database
+            if 'dbId' in locals():
+                self._modelstore.deletePreprocessor(dbId)
+            raise e
+
     def removePostprocessor(self, index: int) -> None:
         """Remove a postprocessor by index."""
         if 0 <= index < len(self._postprocessors):
             deletedProcessor = self._postprocessors.pop(index)
             
             self._modelstore.deletePostprocessor(deletedProcessor.dbId)
+
+    def removePreprocessor(self, index: int) -> None:
+        """Remove a preprocessor by index."""
+        if 0 <= index < len(self._preprocessors):
+            deletedProcessor = self._preprocessors.pop(index)
+            
+            self._modelstore.deletePreprocessor(deletedProcessor.dbId)
+
+    def reorderPreprocessors(self, from_index: int, to_index: int) -> None:
+        """Reorder preprocessors."""
+        if 0 <= from_index < len(self._preprocessors) and 0 <= to_index < len(self._preprocessors):
+            self._logger.error("Previous preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
+            preprocessor = self._preprocessors.pop(from_index)
+            self._preprocessors.insert(to_index, preprocessor)
+            self._logger.error("Reordering preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
+            self._modelstore.reorderPreprocessors(map(lambda p: p.dbId, self._preprocessors))
+
 
     def reorderPostprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder postprocessors."""

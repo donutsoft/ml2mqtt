@@ -1,117 +1,35 @@
-<div class="settingsGroup">
-    <h3>Preprocessors</h3>
-  
-    <div id="preprocessorList">
-      <!-- Mock Existing Preprocessors -->
-      <div class="formField formFieldRow preprocessorRow" 
-            draggable="true" 
-            data-index="0"
-            ondragstart="onDragStart(event)"
-            ondragover="onDragOver(event)"
-            ondrop="onDrop(event)"
-            ondragend="onDragEnd(event)">
-        <div class="labelColumn">
-            <strong>Sliding Window</strong>
-            <div class="subText">Entity: <code>temperature</code></div>
-            <div class="subText">windowSize = 3</div>
-        </div>
-        <div class="deleteColumn">
-            <a href="javascript:void(0)" class="deleteLink" onclick="removePreprocessor(0)">Delete</a>
-        </div>
-        </div>
-  
-      <div class="formField formFieldRow preprocessorRow" 
-           draggable="true" 
-           data-index="1"
-           ondragstart="onDragStart(event)"
-           ondragover="onDragOver(event)"
-           ondrop="onDrop(event)"
-           ondragend="onDragEnd(event)">
-        <div class="labelColumn">
-          <strong>Rolling Average</strong>
-          <div class="subText">Entity: <code>humidity</code></div>
-          <div class="subText">windowSize = 5, centered = true</div>
-        </div>
-        <div class="toggleColumn">
-          <button class="btn small" onclick="removePreprocessor(1)">🗑 Remove</button>
-        </div>
-      </div>
-    </div>
-  
-    <!-- Add Preprocessor Button -->
-    <div style="text-align: right; margin-top: 2rem;">
-      <button class="btn primary" onclick="togglePreprocessorModal()">➕ Add Preprocessor</button>
-    </div>
-  </div>
-  
-  <!-- Overlay Modal -->
-  <div id="preprocessorModal" class="modalOverlay" style="display: none;">
-    <div class="modalContent">
-      <h3>Add Preprocessor</h3>
-  
-      <div class="formField">
-        <label for="preType">Type</label>
-        <select id="preType" class="styledSelect" onchange="updatePreParamUI()">
-          <option value="sliding_window" selected>Sliding Window</option>
-          <option value="rolling_average">Rolling Average</option>
-        </select>
-      </div>
-  
-      <div class="formField">
-        <label for="preEntity">Target Entity</label>
-        <select id="preEntity" class="styledSelect">
-          <option value="">All Entities</option>
-          <option value="temperature">temperature</option>
-          <option value="humidity">humidity</option>
-          <option value="pressure">pressure</option>
-        </select>
-      </div>
-  
-      <div class="formField" id="paramWindowSize">
-        <label for="preWindowSize">Window Size</label>
-        <input type="number" id="preWindowSize" value="5">
-      </div>
-  
-      <div class="formField" id="paramCentered" style="display: none;">
-        <label for="preCentered">Centered</label>
-        <select id="preCentered" class="styledSelect">
-          <option value="true">True</option>
-          <option value="false" selected>False</option>
-        </select>
-      </div>
-  
-      <div class="formField buttonRow" style="justify-content: flex-end; margin-top: 1rem;">
-        <button class="btn" onclick="togglePreprocessorModal()">Cancel</button>
-        <button class="btn primary" onclick="submitPreprocessor()">Add</button>
-      </div>
-    </div>
-  </div>
-  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Preprocessors</title>
   <style>
     .deleteColumn {
-  text-align: right;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex: 1;
-}
+      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1;
+    }
 
-.deleteLink {
-  color: #ff4d4d;
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-}
+    .deleteLink {
+      color: #ff4d4d;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
 
-.deleteLink:hover {
-  text-decoration: underline;
-}
-.formFieldRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
+    .deleteLink:hover {
+      text-decoration: underline;
+    }
+
+    .formFieldRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
     .modalOverlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -121,7 +39,7 @@
       align-items: center;
       z-index: 1000;
     }
-  
+
     .modalContent {
       background: #1f2d3a;
       border: 1px solid #2c3e50;
@@ -129,57 +47,211 @@
       padding: 2rem;
       width: 400px;
     }
-  
+
     .preprocessorRow {
       border: 1px solid #2c3e50;
       padding: 0.75rem;
       border-radius: 6px;
       margin-bottom: 1rem;
       background-color: #1a2735;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       cursor: grab;
     }
-  
+
     .preprocessorRow.drag-over {
       background-color: #27384a;
       border: 2px dashed #4fa3f7;
     }
-  
+
     .subText {
       color: #c0cbdc;
       font-size: 0.85rem;
       margin-top: 2px;
     }
-  
+
     .buttonRow {
       display: flex;
       gap: 1rem;
     }
+
+    .fadeText {
+      color: #c0cbdc;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      min-height: 1.2rem;
+    }
+    .fadeText.visible {
+      opacity: 1;
+    }
   </style>
-  
+</head>
+<body>
+  <h2>Preprocessors</h2>
+  <h4 style="color: #7e8c9c; margin-top: -0.25rem; margin-bottom: 1.5rem;">
+    Model: {{ model.name }}
+  </h4>
+  <p>Define any logic or formatting applied before the model predicts a result and before it's broadcast to MQTT.</p>
+
+  <div class="settingsGroup">
+    <h3>Preprocessors</h3>
+
+    <div id="preprocessorList">
+      {% for idx, preprocessor in enumerate(model.preprocessors) %}
+        <div class="preprocessorRow" draggable="true"
+             data-index="{{ idx }}"
+             ondragstart="onDragStart(event)"
+             ondragover="onDragOver(event)"
+             ondragend="onDragEnd(event)"
+             ondrop="onDrop(event)">
+          <div style="flex: 1;">
+            <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 0.2rem;">
+              {{ preprocessor.type }}
+            </div>
+
+            {% if preprocessor.description %}
+              <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
+                {{ preprocessor.description }}
+              </h4>
+            {% endif %}
+
+            {% if preprocessor.config_string %}
+              <h5 style="margin: 0.4rem 0 0.5rem 0; font-weight: normal; color: #9ba9b4; font-size: 0.95rem;">
+                {{ preprocessor.config_string }}
+              </h5>
+            {% endif %}
+
+            {% if preprocessor.params %}
+              <div class="subText" style="margin-top: 0.25rem;">
+                {% for key, value in preprocessor.params.items() %}
+                  {{ key }}: {{ value }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="deleteColumn">
+            <span class="deleteLink" onclick="removePreprocessor({{ idx }})">Delete</span>
+          </div>
+        </div>
+      {% else %}
+        <p style="color: #7e8c9c;">No preprocessors defined yet.</p>
+      {% endfor %}
+    </div>
+
+    <div style="text-align: right; margin-top: 2rem;">
+      <button class="btn primary" onclick="togglePreprocessorModal()">➕ Add Preprocessor</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="preprocessorModal" class="modalOverlay" style="display: none;">
+    <div class="modalContent">
+      <h3>Add Preprocessor</h3>
+
+      <div class="formField">
+        <label for="preprocessorType">Type</label>
+        <select id="preprocessorType" class="styledSelect" onchange="updatePreprocessorParamUI()"></select>
+        <div id="preprocessorDescription" class="fadeText"></div>
+      </div>
+
+      <div id="preprocessorParamsContainer"></div>
+
+      <div class="formField buttonRow" style="justify-content: flex-end; margin-top: 1rem;">
+        <button class="btn" onclick="togglePreprocessorModal()">Cancel</button>
+        <button class="btn primary" onclick="submitPreprocessor()">Add</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    const availablePreprocessors = {{ availablePreprocessors|tojson }};
+    const addPreprocessorUrl = "{{ url_for('model.addPreprocessor', modelName=model.name) }}";
+    const deletePreprocessorUrl = "{{ url_for('model.deletePreprocessor', modelName=model.name) }}";
+    const reorderPreprocessorsUrl = "{{ url_for('model.reorderPreprocessors', modelName=model.name) }}";
+
     function togglePreprocessorModal() {
       const modal = document.getElementById("preprocessorModal");
       modal.style.display = modal.style.display === "none" ? "flex" : "none";
     }
-  
-    function updatePreParamUI() {
-      const type = document.getElementById("preType").value;
-      document.getElementById("paramWindowSize").style.display = "block";
-      document.getElementById("paramCentered").style.display = type === "rolling_average" ? "block" : "none";
+
+    function populatePreprocessorTypeDropdown() {
+      const typeSelect = document.getElementById("preprocessorType");
+      typeSelect.innerHTML = "";
+
+      for (const processor of availablePreprocessors) {
+        const option = document.createElement("option");
+        option.value = processor.type;
+        option.textContent = processor.type;
+        typeSelect.appendChild(option);
+      }
+
+      updatePreprocessorParamUI();
     }
-  
+
+    function updatePreprocessorParamUI() {
+      const type = document.getElementById("preprocessorType").value;
+      const paramsContainer = document.getElementById("preprocessorParamsContainer");
+      const descriptionContainer = document.getElementById("preprocessorDescription");
+
+      paramsContainer.innerHTML = "";
+      descriptionContainer.classList.remove("visible");
+
+      const selected = availablePreprocessors.find(p => p.type === type);
+      if (!selected) return;
+
+      descriptionContainer.textContent = selected.description || "";
+      setTimeout(() => descriptionContainer.classList.add("visible"), 10);
+
+      const props = selected.config_schema?.properties || {};
+
+      if (Object.keys(props).length === 0) {
+        paramsContainer.style.display = "none";
+        return;
+      } else {
+        paramsContainer.style.display = "block";
+      }
+
+      for (const [paramName, paramConfig] of Object.entries(props)) {
+        const fieldDiv = document.createElement("div");
+        fieldDiv.className = "formField";
+
+        const label = document.createElement("label");
+        label.textContent = paramConfig.description || paramName;
+        label.htmlFor = `preprocessorParam_${paramName}`;
+
+        const input = document.createElement("input");
+        input.type = paramConfig.type === "integer" ? "number" : "text";
+        input.id = `preprocessorParam_${paramName}`;
+        input.value = paramConfig.default || "";
+
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(input);
+        paramsContainer.appendChild(fieldDiv);
+      }
+    }
+
     function submitPreprocessor() {
-      const type = document.getElementById("preType").value;
-      const entity = document.getElementById("preEntity").value || null;
-      const windowSize = parseInt(document.getElementById("preWindowSize").value);
-      const centered = document.getElementById("preCentered").value === "true";
-  
-      const params = { windowSize };
-      if (type === "rolling_average") params.centered = centered;
-  
-      const payload = { type, entity, params };
-  
-      fetch(`/edit-model/{{ model.name }}/preprocessor/add`, {
+      const type = document.getElementById("preprocessorType").value;
+      const selected = availablePreprocessors.find(p => p.type === type);
+      if (!selected) return;
+
+      const params = {};
+      const props = selected.config_schema?.properties || {};
+
+      for (const paramName of Object.keys(props)) {
+        const input = document.getElementById(`preprocessorParam_${paramName}`);
+        if (input) {
+          const value = input.type === "number" ? parseInt(input.value) : input.value;
+          params[paramName] = value;
+        }
+      }
+
+      const payload = { type, params };
+
+      fetch(addPreprocessorUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -188,9 +260,9 @@
         else showToast("Error adding preprocessor", true);
       });
     }
-  
+
     function removePreprocessor(index) {
-      fetch(`/edit-model/{{ model.name }}/preprocessor/delete`, {
+      fetch(deletePreprocessorUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ index })
@@ -199,31 +271,31 @@
         else showToast("Error removing preprocessor", true);
       });
     }
-  
+
     let dragStartIndex = null;
-  
+
     function onDragStart(event) {
       dragStartIndex = Number(event.currentTarget.dataset.index);
       event.dataTransfer.effectAllowed = "move";
     }
-  
+
     function onDragOver(event) {
       event.preventDefault();
       event.currentTarget.classList.add("drag-over");
     }
-  
+
     function onDragEnd(event) {
       document.querySelectorAll(".preprocessorRow").forEach(el => el.classList.remove("drag-over"));
     }
-  
+
     function onDrop(event) {
       event.preventDefault();
       const dropIndex = Number(event.currentTarget.dataset.index);
       event.currentTarget.classList.remove("drag-over");
-  
+
       if (dropIndex === dragStartIndex) return;
-  
-      fetch(`/edit-model/{{ model.name }}/preprocessor/reorder`, {
+
+      fetch(reorderPreprocessorsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fromIndex: dragStartIndex, toIndex: dropIndex })
@@ -232,4 +304,8 @@
         else showToast("Failed to reorder preprocessors", true);
       });
     }
+
+    document.addEventListener("DOMContentLoaded", populatePreprocessorTypeDropdown);
   </script>
+</body>
+</html>

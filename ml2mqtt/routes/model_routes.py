@@ -8,6 +8,7 @@ from classifiers.RandomForest import RandomForestParams
 from classifiers.KNNClassifier import KNNParams
 from utils.helpers import slugify
 from postprocessors.PostprocessorFactory import PostprocessorFactory
+from preprocessors.PreprocessorFactory import PreprocessorFactory
 from ModelManager import ModelManager
 
 logger = logging.getLogger("ml2mqtt.routes.model")
@@ -107,6 +108,9 @@ def init_model_routes(model_manager: ModelManager):
         elif section == "postprocessors":
             logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPostprocessors()))}")
             model.postprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPostprocessors())
+        elif section == "preprocessors":
+            logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors()))}")
+            model.preprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors())
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
         elif section == "mqtt":
@@ -123,6 +127,7 @@ def init_model_routes(model_manager: ModelManager):
             model=model,
             sectionTemplate=sectionTemplate,
             availablePostprocessors=PostprocessorFactory().get_available_postprocessors(),
+            availablePreprocessors=PreprocessorFactory().get_available_preprocessors(),
         )
 
     @model_bp.route("/edit-model/<string:modelName>/change-model", methods=["POST"])
@@ -279,6 +284,22 @@ def init_model_routes(model_manager: ModelManager):
             logger.error(f"Error adding postprocessor: {e}")
             return jsonify({"error": "Internal server error"}), 500
 
+    @model_bp.route("/edit-model/<string:modelName>/preprocessor/add", methods=["POST"]) # FIXME
+    def addPreprocessor(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if data is None:
+                return jsonify({"error": "Missing or invalid JSON payload"}), 400
+            logger.info(f"Adding preprocessor: {data}")
+            model_manager.getModel(modelName).addPreprocessor(data['type'], data['params'])
+            return jsonify({"success": True})
+        except ValueError as e:
+            logger.error(f"Error adding preprocessor: {e}")
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            logger.error(f"Error adding preprocessor: {e}")
+            return jsonify({"error": "Internal server error"}), 500
+
     @model_bp.route("/edit-model/<string:modelName>/postprocessor/delete", methods=["POST"])
     def deletePostprocessor(modelName: str) -> Response:
         try:
@@ -292,6 +313,22 @@ def init_model_routes(model_manager: ModelManager):
             return jsonify({"error": str(e)}), 400
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
+
+
+    @model_bp.route("/edit-model/<string:modelName>/preprocessor/delete", methods=["POST"])
+    def deletePreprocessor(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if data is None or "index" not in data:
+                return jsonify({"error": "Missing index in payload"}), 400
+                
+            model_manager.getModel(modelName).removePreprocessor(data["index"])
+            return jsonify({"success": True})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
+
 
     @model_bp.route("/edit-model/<string:modelName>/postprocessor/reorder", methods=["POST"])
     def reorderPostprocessors(modelName: str) -> Response:
@@ -307,4 +344,17 @@ def init_model_routes(model_manager: ModelManager):
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
 
+    @model_bp.route("/edit-model/<string:modelName>/preprocessor/reorder", methods=["POST"])
+    def reorderPreprocessors(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if data is None or "fromIndex" not in data or "toIndex" not in data:
+                return jsonify({"error": "Missing fromIndex or toIndex in payload"}), 400
+                    
+            model_manager.getModel(modelName).reorderPreprocessors(data["fromIndex"], data["toIndex"])
+            return jsonify({"success": True})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
     return model_bp 

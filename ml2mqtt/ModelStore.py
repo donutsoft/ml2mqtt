@@ -185,7 +185,7 @@ class ModelStore:
 
         return values
 
-    def addObservation(self, label: str, sensors: Dict[str, Any], assignedTime: float = None) -> None:
+    def addObservation(self, label: str, sensors: Dict[str, Any], assignedTime: Optional[float] = None) -> None:
         if assignedTime is None:
             assignedTime = time.time()
         for sensor in sensors:
