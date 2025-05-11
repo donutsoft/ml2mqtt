@@ -1,0 +1,27 @@
+<div class="preprocessorOverlay" id="preprocessorOverlay" style="display: none;">
+    <div class="overlayContent">
+      <h4>Select Sensor</h4>
+      <div class="formField">
+        <label for="sensorSelector">Available Sensors:</label>
+        <select id="sensorSelector" name="sensor">
+          {% if sensors %}
+            {% for sensor in sensors %}
+              <option value="{{ sensor }}">{{ sensor }}</option>
+            {% endfor %}
+          {% else %}
+            <option disabled>No sensors available</option>
+          {% endif %}
+        </select>
+      </div>
+  
+      <h4>Configuration</h4>
+      <div class="preprocessorContent">
+        {% block content %}{% endblock %}
+      </div>
+  
+      <div class="buttonRow">
+        <button onclick="closeOverlay()">Cancel</button>
+        <button onclick="submitPreprocessor()">Add Preprocessor</button>
+      </div>
+    </div>
+</div>

@@ -4,7 +4,18 @@
   <meta charset="UTF-8">
   <title>Preprocessors</title>
   <style>
-    .deleteColumn {
+:root {
+  --border-color: #2c3e50;
+  --highlight-color: #4fa3f7;
+  --text-primary: #c0cbdc;
+  --text-highlight: #7e8c9c;
+  --danger-color: #ff4d4d;
+  --bg-primary: #1a2735;
+  --bg-secondary: #27384a;
+  --overlay-bg: #1f2d3a;
+}
+
+.deleteColumn {
       text-align: right;
       display: flex;
       align-items: center;
@@ -18,152 +29,114 @@
       font-size: 0.95rem;
       font-weight: 500;
       cursor: pointer;
+      margin-top: 8px; /* Adds space above */
+
     }
 
     .deleteLink:hover {
       text-decoration: underline;
     }
 
-    .formFieldRow {
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-    }
+.formFieldRow,
+.buttonRow {
+  display: flex;
+  gap: 1rem;
+}
 
-    .modalOverlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
+.formFieldRow {
+  justify-content: space-between;
+}
 
-    .modalContent {
-      background: #1f2d3a;
-      border: 1px solid #2c3e50;
-      border-radius: 8px;
-      padding: 2rem;
-      width: 400px;
-    }
+.buttonRow {
+  justify-content: flex-end;
+}
 
-    .preprocessorRow {
-      border: 1px solid #2c3e50;
-      padding: 0.75rem;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-      background-color: #1a2735;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: grab;
-    }
-
-    .producesConsumes {
-      background-color: #27384a;
-      padding: 0.5rem;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-    }
-
-    .preprocessorRow.drag-over {
-      background-color: #27384a;
-      border: 2px dashed #4fa3f7;
-    }
-
-    .sectionTitle {
-      font-weight: bold;
-      font-size: 1.05rem;
-      color: #7e8c9c;
-      margin-bottom: 0.5rem;
-    }
-
-    .subText {
-      color: #c0cbdc;
-      font-size: 0.85rem;
-      margin-top: 2px;
-    }
-
-    .buttonRow {
-      display: flex;
-      gap: 1rem;
-    }
-
-    .fadeText {
-      color: #c0cbdc;
-      font-size: 0.9rem;
-      margin-top: 0.5rem;
-      opacity: 0;
-      transition: opacity 0.4s ease;
-      min-height: 1.2rem;
-    }
-    .fadeText.visible {
-      opacity: 1;
-    }
-
-    .standardTable {
+.modalOverlay,
+.preprocessorOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
-.standardTable th, .standardTable td {
-  text-align: left;
-  padding: 4px;
-  border-bottom: 1px solid #2c3e50;
-  word-wrap: break-word;
+.preprocessorOverlay.open {
+  display: flex;
 }
 
-.mqttRow .producesConsumes {
-  margin-bottom: 0;  /* Removes extra space to align with preprocessors */
+.overlayContent,
+.modalContent {
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 450px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay-bg);
 }
 
-.preprocessorRow, .nonDraggableRow {
-  border: 1px solid #2c3e50;
+.preprocessorRow,
+.nonDraggableRow {
   padding: 0.75rem;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   margin-bottom: 1rem;
-  background-color: #1a2735;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-primary);
 }
 
 .preprocessorRow {
   cursor: grab;
 }
 
+.preprocessorRow.drag-over {
+  background-color: var(--bg-secondary);
+  border: 2px dashed var(--highlight-color);
+}
+
 .nonDraggableRow {
-  cursor: default;  /* No drag cursor */
-  opacity: 0.95;    /* Slightly different opacity to indicate non-draggable */
+  cursor: default;
+  opacity: 0.95;
 }
 
-.producesConsumes {
-  background-color: #27384a;
-  padding: 0.5rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
+.sectionTitle {
+  font-weight: bold;
+  font-size: 1.05rem;
+  color: var(--text-highlight);
+  margin-bottom: 0.5rem;
 }
 
-.standardTable {
+.subText,
+.fadeText,
+.formField label {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.fadeText {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  min-height: 1.2rem;
+}
+
+.fadeText.visible {
+  opacity: 1;
+}
+
+.standardTable,
+.standardTable th,
+.standardTable td {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.standardTable th, .standardTable td {
-  text-align: left;
   padding: 4px;
-  border-bottom: 1px solid #2c3e50;
+  border-bottom: 1px solid var(--border-color);
   word-wrap: break-word;
-}
-
-.producesConsumes {
-  background-color: #27384a;
-  padding: 0.5rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
+  text-align: left;
 }
 
 .listItems {
@@ -174,6 +147,31 @@
 
 .listItem {
   font-size: 0.85rem;
+}
+
+.formField {
+  margin-bottom: 1rem;
+}
+
+.formField input,
+.formField select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+}
+
+.producesConsumes {
+  background-color: #27384a;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem; /* Increased spacing */
+}
+
+.producesConsumes + .producesConsumes {
+  margin-top: 1.5rem; /* Additional spacing between Consumes and Produces */
 }
 
   </style>
@@ -309,22 +307,22 @@
   <button class="btn primary" onclick="togglePreprocessorModal()">➕ Add Preprocessor</button>
 </div>
 
-  <!-- Modal -->
-  <div id="preprocessorModal" class="modalOverlay" style="display: none;">
-    <div class="modalContent">
-      <h3>Add Preprocessor</h3>
-
+  <!-- Add Preprocessor Modal -->
+  <div id="preprocessorModal" class="preprocessorOverlay">
+    <div class="overlayContent">
+      <h4>Add Preprocessor</h4>
       <div class="formField">
-        <label for="preprocessorType">Type</label>
-        <select id="preprocessorType" class="styledSelect" onchange="updatePreprocessorParamUI()"></select>
-        <div id="preprocessorDescription" class="fadeText"></div>
+        <label for="preprocessorType">Select Preprocessor:</label>
+        <select id="preprocessorType" name="preprocessorType">
+          {% for preprocessor in availablePreprocessors %}
+            <option value="{{ preprocessor.type }}">{{ preprocessor.name }}</option>
+          {% endfor %}
+        </select>
       </div>
-
-      <div id="preprocessorParamsContainer"></div>
-
-      <div class="formField buttonRow" style="justify-content: flex-end; margin-top: 1rem;">
-        <button class="btn" onclick="togglePreprocessorModal()">Cancel</button>
-        <button class="btn primary" onclick="submitPreprocessor()">Add</button>
+      <div id="preprocessorConfigContainer"></div>
+      <div class="buttonRow">
+        <button onclick="togglePreprocessorModal()">Cancel</button>
+        <button onclick="submitPreprocessor()">Add Preprocessor</button>
       </div>
     </div>
   </div>
@@ -334,6 +332,7 @@
     const addPreprocessorUrl = "{{ url_for('model.addPreprocessor', modelName=model.name) }}";
     const deletePreprocessorUrl = "{{ url_for('model.deletePreprocessor', modelName=model.name) }}";
     const reorderPreprocessorsUrl = "{{ url_for('model.reorderPreprocessors', modelName=model.name) }}";
+    const renderPreprocessorUrl = "{{ url_for('model.render_preprocessor', preprocessor_type='__PLACEHOLDER__') }}";
 
     function togglePreprocessorModal() {
       const modal = document.getElementById("preprocessorModal");
@@ -354,48 +353,29 @@
       updatePreprocessorParamUI();
     }
 
-    function updatePreprocessorParamUI() {
-      const type = document.getElementById("preprocessorType").value;
-      const paramsContainer = document.getElementById("preprocessorParamsContainer");
-      const descriptionContainer = document.getElementById("preprocessorDescription");
+function updatePreprocessorParamUI() {
+  const type = document.getElementById("preprocessorType").value;
+  const configContainer = document.getElementById("preprocessorConfigContainer");
+  const url = renderPreprocessorUrl.replace("__PLACEHOLDER__", type);
 
-      paramsContainer.innerHTML = "";
-      descriptionContainer.classList.remove("visible");
+  configContainer.innerHTML = "<p>Loading...</p>";
 
-      const selected = availablePreprocessors.find(p => p.type === type);
-      if (!selected) return;
-
-      descriptionContainer.textContent = selected.description || "";
-      setTimeout(() => descriptionContainer.classList.add("visible"), 10);
-
-      const props = selected.config_schema?.properties || {};
-
-      if (Object.keys(props).length === 0) {
-        paramsContainer.style.display = "none";
-        return;
-      } else {
-        paramsContainer.style.display = "block";
-      }
-
-      for (const [paramName, paramConfig] of Object.entries(props)) {
-        const fieldDiv = document.createElement("div");
-        fieldDiv.className = "formField";
-
-        const label = document.createElement("label");
-        label.textContent = paramConfig.description || paramName;
-        label.htmlFor = `preprocessorParam_${paramName}`;
-
-        const input = document.createElement("input");
-        input.type = paramConfig.type === "integer" ? "number" : "text";
-        input.id = `preprocessorParam_${paramName}`;
-        input.value = paramConfig.default || "";
-
-        fieldDiv.appendChild(label);
-        fieldDiv.appendChild(input);
-        paramsContainer.appendChild(fieldDiv);
-      }
-    }
-
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ sensors: availablePreprocessors })
+  })
+  .then(response => response.text())
+  .then(html => {
+    configContainer.innerHTML = html;
+  })
+  .catch(err => {
+    console.error("Error loading preprocessor template:", err);
+    configContainer.innerHTML = "<p>Error loading configuration.</p>";
+  });
+}
     function submitPreprocessor() {
       const type = document.getElementById("preprocessorType").value;
       const selected = availablePreprocessors.find(p => p.type === type);

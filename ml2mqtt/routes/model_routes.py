@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, url_for, redirect, abort, Response, jsonify
+from jinja2 import TemplateNotFound
 from typing import Dict, Any, List, Optional
 import json
 import math
@@ -114,7 +115,7 @@ def init_model_routes(model_manager: ModelManager):
             evaluator = PreprocessorEvaluator(model_manager.getModel(modelName).getPreprocessors())
             #model.preprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors())
             model.preprocessors = evaluator.evaluate(model.recentMqtt)
-            
+
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
         elif section == "mqtt":
@@ -374,4 +375,15 @@ def init_model_routes(model_manager: ModelManager):
             return jsonify({"error": str(e)}), 400
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
+
+    @model_bp.route("/render_preprocessor/<string:preprocessor_type>", methods=["POST"])
+    def render_preprocessor(preprocessor_type):
+        data = request.get_json()
+        sensors = data.get("sensors", [])
+
+        try:
+            return render_template(f"preprocessors/{preprocessor_type}.html", sensors=sensors)
+        except TemplateNotFound:
+            return jsonify({"error": "Template not found"}), 404
+
     return model_bp 
