@@ -192,6 +192,9 @@
 <div class="mqttRow nonDraggableRow">
   <div style="flex: 1;">
     <div class="sectionTitle">MQTT</div>
+    <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
+      The values received most recently from MQTT
+    </h4>
 
     <!-- Produces Section -->
     <div class="producesConsumes">
@@ -237,7 +240,10 @@
          ondragend="onDragEnd(event)"
          ondrop="onDrop(event)">
       <div style="flex: 1;">
-        <div class="sectionTitle">{{ preprocessor.type }}</div>
+        <div class="sectionTitle">{{ preprocessor.name }}</div>
+        <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
+          {{ preprocessor.description }}
+        </h4>
 
         <!-- Consumes Section -->
         <div class="producesConsumes">
@@ -341,7 +347,7 @@
       for (const processor of availablePreprocessors) {
         const option = document.createElement("option");
         option.value = processor.type;
-        option.textContent = processor.type;
+        option.textContent = processor.name;
         typeSelect.appendChild(option);
       }
 

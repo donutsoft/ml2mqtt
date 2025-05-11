@@ -2,11 +2,12 @@ from typing import Dict, Any, Optional, ClassVar
 from ModelStore import ModelStore
 from .base import BasePreprocessor
 
-class DefaultValuePreprocessor(BasePreprocessor):
+class NullHandler(BasePreprocessor):
     """Replaces None values with default values from ModelStore."""
     
-    type: ClassVar[str] = "default_value"
-    description: ClassVar[str] = "Replaces None values with default values from ModelStore"
+    name: ClassVar[str] = "Null Handler"
+    type: ClassVar[str] = "null_handler"
+    description: ClassVar[str] = "Replaces None values with predefined value suitable for an ML model."
     
     config_schema: ClassVar[Dict[str, Any]] = {
         "type": "object",
@@ -22,7 +23,7 @@ class DefaultValuePreprocessor(BasePreprocessor):
         super().__init__(dbId, **kwargs)
         #self.model_store = ModelStore()
     
-    def process(self, observation: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, observation: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
         result = observation.copy()
         
         # Process either a single entity or all entities

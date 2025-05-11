@@ -51,6 +51,7 @@ class PreprocessorFactory:
 
             preprocessors.append({
                 "type": processor.type,
+                "name": processor.name,
                 "description": processor.description,
                 "config_schema": schema
             })

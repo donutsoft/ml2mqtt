@@ -5,6 +5,7 @@ class BasePreprocessor(ABC):
     """Base class for all preprocessors."""
     
     # Static metadata that must be defined by subclasses
+    name: ClassVar[str] = "name"
     type: ClassVar[str] = "type"
     description: ClassVar[str] = "Base preprocessor"  # Human-readable description
     
@@ -31,7 +32,7 @@ class BasePreprocessor(ABC):
         self.config = kwargs
     
     @abstractmethod
-    def process(self, observation: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, observation: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process the observation.
         
@@ -48,9 +49,11 @@ class BasePreprocessor(ABC):
         Convert preprocessor configuration to dictionary.
         """
         return {
+            "name": self.name,
             "type": self.type,
             "dbId": self.dbId,
-            "config": self.config
+            "config": self.config,
+            "description": self.description
         }
     
     @classmethod

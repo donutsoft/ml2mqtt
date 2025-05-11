@@ -124,7 +124,7 @@ class ModelService:
         
         # Apply Preprocessors
         for preprocessor in self._preprocessors:
-            entityMap = preprocessor.process(entityMap)
+            entityMap = preprocessor.process(entityMap, {})
             if not entityMap:
                 self._logger.debug("No entity values to process.")
                 return

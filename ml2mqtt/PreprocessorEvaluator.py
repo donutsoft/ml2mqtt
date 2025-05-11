@@ -11,7 +11,7 @@ class PreprocessorEvaluator:
         for processor in self.preprocessors:
             procResult = processor.to_dict()
             procResult['consumes'] = input
-            procResult['produces'] = processor.process(input)
+            procResult['produces'] = processor.process(input, {})
             input = procResult['produces']
             result.append(procResult)
         return result

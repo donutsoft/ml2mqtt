@@ -1,17 +1,18 @@
 from typing import Dict, Any, Optional, ClassVar
 from .base import BasePreprocessor
 
-class StringConverterPreprocessor(BasePreprocessor):
+class TypeCaster(BasePreprocessor):
     """Converts string values to floats and handles unknown values."""
     
-    type: ClassVar[str] = "string_converter"
-    description = "Converts string values to floats and replaces 'unknown'/'unavailable' with None"
+    name: ClassVar[str] = "Type Caster"
+    type: ClassVar[str] = "type_caster"
+    description = "Converts string values to floats and replaces 'unknown' and 'unavailable' with None"
     
     def __init__(self, dbId: int, **kwargs):
         super().__init__(dbId, **kwargs)
         self.unknown_values = {"unknown", "unavailable", "none", "null"}
     
-    def process(self, observation: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, observation: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
         result = observation.copy()
         
         # Process either a single entity or all entities
