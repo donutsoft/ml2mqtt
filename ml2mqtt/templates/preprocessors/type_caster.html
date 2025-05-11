@@ -1,24 +1,14 @@
 {% extends "preprocessors/preprocessor_base.html" %}
 
 {% block content %}
-<div class="preprocessorOverlay" id="preprocessorOverlay">
-  <div class="overlayContent">
-    <h4>Configuration for Type Caster</h4>
-    
-    <div class="formField">
-      <label for="unknownReplacement">Replacement for 'unknown'/'unavailable':</label>
-      <input type="text" id="unknownReplacement" name="unknownReplacement" value="{{ config.unknownReplacement | default('None') }}">
-    </div>
 
-    <div class="formField">
-      <label for="floatPrecision">Float Precision:</label>
-      <input type="number" id="floatPrecision" name="floatPrecision" value="{{ config.floatPrecision | default(2) }}">
-    </div>
+<div class="formField">
+  <label for="unknownReplacement">Replacement for 'unknown'/'unavailable':</label>
+  <input type="text" id="unknownReplacement" name="unknownReplacement" value="{{ config.unknownReplacement | default('None') }}">
+</div>
 
-    <div class="buttonRow">
-      <button onclick="closeOverlay()">Cancel</button>
-      <button onclick="submitPreprocessor()">Add Preprocessor</button>
-    </div>
-  </div>
+<div class="formField">
+  <label for="floatPrecision">Float Precision:</label>
+  <input type="number" id="floatPrecision" name="floatPrecision" value="{{ config.floatPrecision | default(2) }}">
 </div>
 {% endblock %}
