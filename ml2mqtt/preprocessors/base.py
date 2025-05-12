@@ -22,8 +22,13 @@ class BasePreprocessor(ABC):
         """
         self.dbId = dbId
         self.config = kwargs
-        self.sensors = set([key for item in self.config['sensor'] for key, value in item.items() if value is True])
-    
+        if isinstance(self.config['sensor'], str):
+            self.sensors = {self.config['sensor']}
+        elif isinstance(self.config['sensor'], list):
+            self.sensors = {key for item in self.config['sensor'] for key, value in item.items() if value is True}
+        else:
+            self.sensors = set()
+            
     @abstractmethod
     def process(self, observation: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
         """

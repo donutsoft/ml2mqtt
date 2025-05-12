@@ -1,14 +1,4 @@
 {% extends "preprocessors/preprocessor_base.html" %}
 
 {% block content %}
-
-<div class="formField">
-  <label for="unknownReplacement">Replacement for 'unknown'/'unavailable':</label>
-  <input type="text" id="unknownReplacement" name="unknownReplacement" value="{{ config.unknownReplacement | default('None') }}">
-</div>
-
-<div class="formField">
-  <label for="floatPrecision">Float Precision:</label>
-  <input type="number" id="floatPrecision" name="floatPrecision" value="{{ config.floatPrecision | default(2) }}">
-</div>
 {% endblock %}

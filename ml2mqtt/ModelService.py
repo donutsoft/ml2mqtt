@@ -120,14 +120,26 @@ class ModelService:
                 label = entity["label"]
             elif "entity_id" in entity and "state" in entity:
                 entityMap[entity["entity_id"]] = entity["state"]
-        self._modelstore.saveDict("mqtt_observation", entityMap)
-        
+
+        previousEntityMap = self._modelstore.getDict("mqtt_observations")
+        if "history" in previousEntityMap:
+            previousEntityMap['history'].append(entityMap)
+            if len(previousEntityMap['history']) > 10:
+                previousEntityMap['history'].pop(0)
+        else:
+            previousEntityMap['history'] = [entityMap]    
+        self._modelstore.saveDict("mqtt_observations", previousEntityMap)
+
         # Apply Preprocessors
+        processor_storage = self._modelstore.getDict("processor_storage")
         for preprocessor in self._preprocessors:
-            entityMap = preprocessor.process(entityMap, {})
+            if not preprocessor.dbId in processor_storage:
+                processor_storage[preprocessor.dbId] = {}
+            entityMap = preprocessor.process(entityMap, processor_storage[preprocessor.dbId])
             if not entityMap:
                 self._logger.debug("No entity values to process.")
                 return
+        self._modelstore.saveDict("processor_storage", processor_storage)
 
         if not entityMap:
             self._logger.debug("No entity values to process.")
@@ -319,6 +331,10 @@ class ModelService:
         self._logger.info(f"Setting learning type: {learningType}")
         self._modelstore.saveDict("model_settings", settings)
 
-    def getMostRecentMqttObservation(self):
-        return self._modelstore.getDict("mqtt_observation")
+    def getMostRecentMqttObservations(self):
+        previousObservations = self._modelstore.getDict("mqtt_observations")
+        if 'history' in previousObservations:
+            return previousObservations['history']
+        else:
+            return []
     
