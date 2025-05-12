@@ -419,6 +419,7 @@
       updatePreprocessorParamUI();
     }
 
+appendedScripts = [];
 function updatePreprocessorParamUI() {
   const type = document.getElementById("preprocessorType").value;
   const configContainer = document.getElementById("preprocessorConfigContainer");
@@ -431,11 +432,26 @@ function updatePreprocessorParamUI() {
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ sensors: availablePreprocessors })
+    body: JSON.stringify({ sensors: {{model.lastSensors|tojson}} })
   })
   .then(response => response.text())
   .then(html => {
+    if (appendedScripts.length > 0) {
+      for(script of appendedScripts) {
+        document.body.removeChild(script);
+      }
+      appendedScripts = []
+    }
     configContainer.innerHTML = html;
+        // Find and execute the script tags
+      const scripts = configContainer.querySelectorAll("script");
+      scripts.forEach(script => {
+        const newScript = document.createElement("script");
+        newScript.textContent = script.textContent;
+        document.body.appendChild(newScript);
+        appendedScripts.push(newScript);
+      });
+
   })
   .catch(err => {
     console.error("Error loading preprocessor template:", err);
@@ -539,7 +555,7 @@ function updatePreprocessorParamUI() {
 
     document.addEventListener("DOMContentLoaded", () => {
       populatePreprocessorTypeDropdown();
-      
+
       const typeSelect = document.getElementById("preprocessorType");
       typeSelect.addEventListener("change", updatePreprocessorParamUI);
     });

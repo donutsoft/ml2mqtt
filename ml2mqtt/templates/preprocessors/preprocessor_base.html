@@ -1,16 +1,94 @@
-<div>
-<div class="formField">
-<label for="sensorSelector">Available Sensors:</label>
-<select id="sensorSelector" name="sensor">
-    {% if sensors %}
-    {% for sensor in sensors %}
-        <option value="{{ sensor }}">{{ sensor }}</option>
-    {% endfor %}
-    {% else %}
-    <option disabled>No sensors available</option>
-    {% endif %}
-</select>
-</div>
+<div class="formField" style="margin-bottom: 1rem; width: 100%; box-sizing: border-box;">
+    <label style="margin-bottom: 0.5rem; font-weight: bold; color: #c0cbdc; display: block;">
+      Available Sensors:
+    </label>
+  
+    <div style="
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background-color: var(--bg-secondary);
+        width: 100%;
+        box-sizing: border-box;
+        text-align: left;
+      ">
+  
+      <!-- "All Sensors" Option -->
+      <div style="display: flex; align-items: center;">
+        <input type="checkbox" 
+               id="selectAll" 
+               onclick="toggleSelectAll(this)" 
+               style="cursor: pointer; width: 1rem; flex: 0 0 1rem;">
+        <label for="selectAll" 
+               style="cursor: pointer; margin-left: 0.5rem; color: #c0cbdc;">
+          All Sensors
+        </label>
+      </div>
+  
+      <!-- Individual Sensor Items -->
+      {% if sensors %}
+        {% for sensor in sensors %}
+          <div style="display: flex; align-items: center;">
+            <input type="checkbox" 
+                   id="sensor_{{ loop.index }}" 
+                   class="sensorCheckbox" 
+                   name="sensor" 
+                   value="{{ sensor }}" 
+                   onclick="handleSensorSelection()" 
+                   style="cursor: pointer; width: 1rem; flex: 0 0 1rem;">
+            <label for="sensor_{{ loop.index }}" 
+                   style="cursor: pointer; margin-left: 0.5rem; color: #c0cbdc;">
+              {{ sensor }}
+            </label>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="color: #7e8c9c; font-style: italic;">
+          No sensors available.
+        </div>
+      {% endif %}
+  
+    </div>
+  </div>
 
-{% block content %}{% endblock %}
-</div>
+  {% block content %}{% endblock %}
+  
+  <script>
+    function toggleSelectAll(selectAllCheckbox) {
+      const checkboxes = document.querySelectorAll(".sensorCheckbox");
+      const isChecked = selectAllCheckbox.checked;
+  
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+      });
+  
+      updateSelectAllState();
+    }
+  
+    function handleSensorSelection() {
+      const allCheckbox = document.getElementById("selectAll");
+      const checkboxes = document.querySelectorAll(".sensorCheckbox");
+  
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const noneChecked = Array.from(checkboxes).every(cb => !cb.checked);
+  
+      allCheckbox.checked = allChecked;
+      allCheckbox.indeterminate = !allChecked && !noneChecked;
+    }
+  
+    function updateSelectAllState() {
+      const allCheckbox = document.getElementById("selectAll");
+      const checkboxes = document.querySelectorAll(".sensorCheckbox");
+  
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const noneChecked = Array.from(checkboxes).every(cb => !cb.checked);
+  
+      allCheckbox.checked = allChecked;
+      allCheckbox.indeterminate = !allChecked && !noneChecked;
+    }
+  
+    document.addEventListener("DOMContentLoaded", updateSelectAllState);
+  </script>

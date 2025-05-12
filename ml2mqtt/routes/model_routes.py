@@ -113,8 +113,11 @@ def init_model_routes(model_manager: ModelManager):
             logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors()))}")
             model.recentMqtt = model_manager.getModel(modelName).getMostRecentMqttObservation()
             evaluator = PreprocessorEvaluator(model_manager.getModel(modelName).getPreprocessors())
-            #model.preprocessors = map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors())
             model.preprocessors = evaluator.evaluate(model.recentMqtt)
+            if len(model.preprocessors) == 0:
+                model.lastSensors = model.recentMqtt
+            else:
+                model.lastSensors = model.preprocessors[-1]['produces']
 
         elif section == "entities":
             model.entities = model_manager.getModel(modelName).getEntityKeys()
