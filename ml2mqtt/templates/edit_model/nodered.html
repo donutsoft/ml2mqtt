@@ -1,0 +1,102 @@
+{% block content %}
+<h2>Node-RED Integration</h2>
+<h4 class="subheader">Model: {{ model.name }}</h4>
+
+<div class="settingsWrapper">
+  <div class="statCard">
+    <label for="noderedExport">Node-RED Configuration</label>
+    <textarea id="noderedExport" class="sharedInputStyle readonlyField" rows="10" readonly>{{ model.params.noderedConfig }}</textarea>
+    <p class="infoText">Copy the above JSON configuration and paste it into Node-RED to automatically create the ML2MQTT bindings. Press ctrl+i to open the editor within NodeRed. When you deploy some of these nodes will only be partially configured, you'll see the areas highlighted in red which need modification.</p>
+  </div>
+
+  <div style="text-align: right; margin-top: 2rem;">
+    <button onclick="copyToClipboard()" class="btn primary wideBtn">Copy to Clipboard</button>
+  </div>
+</div>
+
+<script>
+  function copyToClipboard() {
+    const textarea = document.getElementById("noderedExport");
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    showToast("Configuration copied to clipboard");
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2500);
+  }
+</script>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">Configuration copied to clipboard</div>
+
+<style>
+  .readonlyField {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .statCard label {
+    color: #cdd9e5;
+    margin-bottom: 6px;
+    margin-top: 1rem;
+    display: block;
+  }
+
+  .sharedInputStyle {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: 1px solid #333;
+    background-color: #1f2d3a;
+    color: white;
+  }
+
+  .infoText {
+    font-size: 0.9rem;
+    color: #c8d4e3;
+    margin-top: 8px;
+  }
+
+  .btn.primary {
+    background-color: #007acc;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .btn.primary:hover {
+    background-color: #2196f3;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 9999;
+  }
+
+  .toast.show {
+    opacity: 1;
+  }
+</style>
+{% endblock %}

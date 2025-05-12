@@ -2,7 +2,7 @@
 {% block content %}
 
 <h2>Create New Model</h2>
-
+<h3>Most of these settings can be changed later.</h3>
 <form method="POST" action="{{ url_for('model.createModel') }}">
     <div class="form-group">
         <label for="model_name">Model Name</label>
@@ -11,7 +11,19 @@
     </div>
 
     <div class="form-group">
-        <label for="default_value">Unavailable sensor fallback value</label>
+        <label>Result labels (e.g. Kitchen, Living Room etc)</label>
+        <div id="labels_container"></div>
+        <button type="button" id="add_label_btn" class="btn btn-secondary">Add Label</button>
+        <input type="hidden" name="labels" id="labels_input" />
+    </div>
+
+    <div class="form-group">
+        <label for="default_value">Initial number of input sensors</label>
+        <input type="number" id="sensor_count" name="default_value" value="1" step="any">
+    </div>
+
+    <div class="form-group">
+        <label for="default_value">Unknown sensor fallback value</label>
         <input type="number" id="default_value" name="default_value" value="9999" step="any">
     </div>
 
@@ -23,13 +35,38 @@
     <button type="submit" id="submit_btn" class="btn btn-primary">Create Model</button>
 </form>
 
+<style>
+    .label-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .label-item .label-input {
+        flex-grow: 1;
+        margin-right: 0.5rem;
+        padding: 0.4rem;
+    }
+    .label-item .remove-label-btn {
+        background-color: #ff4d4d;
+        color: #fff;
+        border: none;
+        padding: 0.3rem 0.5rem;
+        cursor: pointer;
+        font-weight: bold;
+    }
+</style>
+
 <script>
     const modelNameInput = document.getElementById("model_name");
     const modelStatus = document.getElementById("model_status");
     const submitBtn = document.getElementById("submit_btn");
     const mqttTopicInput = document.getElementById("mqtt_topic");
+    const labelsContainer = document.getElementById("labels_container");
+    const addLabelBtn = document.getElementById("add_label_btn");
+    const labelsInput = document.getElementById("labels_input");
 
-    // Function to slugify the model name
+    let labels = [];
+
     function slugify(text) {
         return text
             .toString()
@@ -40,7 +77,6 @@
             .replace(/\-\-+/g, "-");
     }
 
-    // Function to check if model name exists
     async function checkModelName(name) {
         const slug = slugify(name);
         const response = await fetch(`{{ url_for('model.checkModel') }}?name=${encodeURIComponent(slug)}`);
@@ -48,7 +84,6 @@
         return data.exists;
     }
 
-    // Function to update MQTT topic
     function updateMqttTopic() {
         const modelName = modelNameInput.value.trim();
         if (modelName) {
@@ -57,7 +92,6 @@
         }
     }
 
-    // Event listeners
     modelNameInput.addEventListener("input", async function() {
         const name = this.value.trim();
         if (name) {
@@ -78,7 +112,39 @@
         }
     });
 
-    // Initially disable the button until valid input is confirmed
+    addLabelBtn.addEventListener("click", function() {
+        const labelId = Date.now();
+        const labelDiv = document.createElement("div");
+        labelDiv.className = "label-item";
+        labelDiv.setAttribute("data-id", labelId);
+        labelDiv.innerHTML = `<input type="text" placeholder="Label" class="label-input" />
+                              <button type="button" class="remove-label-btn">X</button>`;
+
+        labelsContainer.appendChild(labelDiv);
+
+        labelDiv.querySelector(".remove-label-btn").addEventListener("click", function() {
+            labelsContainer.removeChild(labelDiv);
+            labels = labels.filter(label => label.id !== labelId);
+            updateLabelsInput();
+        });
+
+        labelDiv.querySelector(".label-input").addEventListener("input", function() {
+            const value = this.value.trim();
+            const labelIndex = labels.findIndex(label => label.id === labelId);
+            if (labelIndex >= 0) {
+                labels[labelIndex].value = value;
+            } else {
+                labels.push({ id: labelId, value });
+            }
+            updateLabelsInput();
+        });
+    });
+
+    function updateLabelsInput() {
+        const labelValues = labels.map(label => label.value).filter(Boolean);
+        labelsInput.value = JSON.stringify(labelValues);
+    }
+
     submitBtn.disabled = true;
 </script>
 

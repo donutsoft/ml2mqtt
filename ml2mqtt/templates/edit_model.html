@@ -17,7 +17,9 @@
          class="menu-link {% if activeSection == 'postprocessors' %}active{% endif %}">Postprocessors</a>
       <a href="{{ url_for('model.editModel', modelName=model.name, section='mqtt') }}"
          class="menu-link {% if activeSection == 'mqtt' %}active{% endif %}">MQTT</a>
-    </nav>
+        <a href="{{ url_for('model.editModel', modelName=model.name, section='nodered') }}"
+         class="menu-link {% if activeSection == 'nodered' %}active{% endif %}">Node Red</a>
+      </nav>
   </aside>
 
   <!-- Main Content -->

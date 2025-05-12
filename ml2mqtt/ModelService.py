@@ -10,7 +10,7 @@ from postprocessors.PostprocessorFactory import PostprocessorFactory
 from postprocessors.base import BasePostprocessor
 from preprocessors.base import BasePreprocessor
 from preprocessors.PreprocessorFactory import PreprocessorFactory
-
+from nodered.nodered_generator import NodeRedGenerator
 DISABLED_LABEL = "Disabled"
 
 
@@ -338,3 +338,7 @@ class ModelService:
         else:
             return []
     
+
+    def generateNodeRed(self) -> str:
+        nodeRedGenerator = NodeRedGenerator(self)
+        return nodeRedGenerator.generate()
