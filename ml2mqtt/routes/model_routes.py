@@ -49,9 +49,9 @@ def init_model_routes(model_manager: ModelManager):
 
             newModel = model_manager.addModel(modelName)
             newModel.setMqttTopic(mqttTopic)
-            newModel.setDefaultValue("*", defaultValue)
             newModel.setName(modelName)
             newModel.subscribeToMqttTopics()
+            # TODO: Add a default pipeline
 
             return redirect(url_for("model.home"))
 

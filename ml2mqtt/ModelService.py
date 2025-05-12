@@ -167,9 +167,6 @@ class ModelService:
     def setName(self, modelName: str) -> None:
         self._modelstore.setName(modelName)
 
-    def setDefaultValue(self, sensorName: str, defaultValue: Any) -> None:
-        self._modelstore.setDefaultValue(sensorName, defaultValue)
-
     def getObservations(self) -> List[ModelObservation]:
         return self._modelstore.getObservations()
 

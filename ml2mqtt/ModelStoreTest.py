@@ -61,8 +61,6 @@ class TestSkillStore(unittest.TestCase):
                 "location": "9999",
             }}])
         
-        #self.db.setDefaultValue("")
-
     def tearDown(self):
         try:
             os.remove("skills/test_skill.db")

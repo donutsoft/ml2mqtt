@@ -14,14 +14,11 @@ from enum import Enum
 class EntityKey:
     name: str
     type: int
-    default_value: Any
     display_type: str = field(init=False)
     significance: float = field(default=0)
 
     def __post_init__(self):
-        if self.type == ModelStore.TYPE_INT:
-            self.display_type = "int"
-        elif self.type == ModelStore.TYPE_FLOAT:
+        if self.type == ModelStore.TYPE_FLOAT:
             self.display_type = "float"
         elif self.type == ModelStore.TYPE_STRING:
             self.display_type = "string"
@@ -50,36 +47,32 @@ class ProcessorType(Enum):
     POSTPROCESSOR = "Postprocessors"
 
 class ModelStore:
-    TYPE_INT = 0
     TYPE_FLOAT = 1
     TYPE_STRING = 2
 
     TYPE_FORMATS = {
-        TYPE_INT: "f",
         TYPE_FLOAT: "f",
         TYPE_STRING: "i",  # stored as int reference to string table
     }
 
-    def __init__(self, modelPath: str, unknownValue: float = 9999.0):
+    def __init__(self, modelPath: str):
         self.modelPath = modelPath
         self.logger = logging.getLogger(__name__)
         self.lock = threading.Lock()
         self._db = sqlite3.connect(modelPath, check_same_thread=False)
         self._db.execute("PRAGMA journal_mode=WAL")
         self._cursor = self._db.cursor()
-        self._unknownValue: Union[str, float] = unknownValue
 
         self._createTables()
         self._populateSensors()
         self._populateStringTable()
 
-        self._unknownValue = self._getSetting("unknown_value", self._unknownValue)
         self.logger.info("ModelStore initialized with model: %s", modelPath)
 
     def _createTables(self) -> None:
         with self.lock, self._db:
             cursor = self._db.cursor()
-            cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name TEXT PRIMARY KEY, type INTEGER, default_value BLOB)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS SensorKeys (name TEXT PRIMARY KEY, type INTEGER)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Observations (time INTEGER, label TEXT, data BLOB)")
             cursor.execute("CREATE TABLE IF NOT EXISTS StringTable (name TEXT)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Settings (name TEXT PRIMARY KEY, value)")
@@ -103,9 +96,8 @@ class ModelStore:
 
     def _populateSensors(self) -> None:
         self._entityKeys: List[EntityKey] = []
-        for name, type_, default_blob in self._cursor.execute("SELECT name, type, default_value FROM SensorKeys"):
-            default_value = struct.unpack(self.TYPE_FORMATS[type_], default_blob)[0]
-            self._entityKeys.append(EntityKey(name, type_, default_value))
+        for name, type_ in self._cursor.execute("SELECT name, type FROM SensorKeys"):
+            self._entityKeys.append(EntityKey(name, type_))
         self._entityKeySet: Set[str] = set(sk.name for sk in self._entityKeys)
 
     def _populateStringTable(self) -> None:
@@ -128,7 +120,7 @@ class ModelStore:
         elif isinstance(variable, str):
             try:
                 float(variable)
-                return self.TYPE_FLOAT if '.' in variable else self.TYPE_INT
+                return self.TYPE_FLOAT
             except ValueError:
                 return self.TYPE_STRING
         raise ValueError(f"Unsupported type: {variable}")
@@ -137,7 +129,7 @@ class ModelStore:
         varType = self._getType(variable)
         if varType == self.TYPE_STRING:
             return self._getStringId(variable)
-        elif varType == self.TYPE_INT or varType == self.TYPE_FLOAT:
+        elif varType == self.TYPE_FLOAT:
             return float(variable)
         raise ValueError(f"Unsupported type: {variable}")
 
@@ -156,13 +148,11 @@ class ModelStore:
 
     def _addSensorType(self, name: str, value: Any) -> None:
         sensorType = self._getType(value)
-        unknownValue = self._getDbValue(str(self._unknownValue) if sensorType == self.TYPE_STRING else self._unknownValue)
-        packedDefault = struct.pack(self.TYPE_FORMATS[sensorType], unknownValue)
         with self.lock, self._db:
             try:
-                self._db.execute("INSERT INTO SensorKeys (name, type, default_value) VALUES (?, ?, ?)", (name, sensorType, packedDefault))
+                self._db.execute("INSERT INTO SensorKeys (name, type) VALUES (?, ?, ?)", (name, sensorType))
                 self._db.commit()
-                self._entityKeys.append(EntityKey(name, sensorType, unknownValue))
+                self._entityKeys.append(EntityKey(name, sensorType))
                 self._entityKeySet.add(name)
             except sqlite3.IntegrityError:
                 pass
@@ -172,9 +162,7 @@ class ModelStore:
         remaining = set(entityMap.keys())
         # Filter entity values based on known entity keys
         for entity in self._entityKeys:
-            val = entityMap.get(entity.name, entity.default_value)
-            if val in ("unknown", "unavailable"):
-                val = entity.default_value
+            val = entityMap.get(entity.name)
             values[entity.name] = self._getDbValue(val)
             remaining.discard(entity.name)
 
@@ -193,7 +181,7 @@ class ModelStore:
                 self._addSensorType(sensor, sensors[sensor])
 
         formatStr = self._generateFormatString()
-        values = [self._getDbValue(sensors.get(entity.name, entity.default_value)) for entity in self._entityKeys]
+        values = [self._getDbValue(sensors.get(entity.name)) for entity in self._entityKeys]
         packed = struct.pack(formatStr, *values)
 
         with self.lock, self._db:
@@ -207,28 +195,11 @@ class ModelStore:
             formatStr = self._generateFormatString(len(data))
             unpacked = struct.unpack(formatStr, data)
             sensorValues = {
-                entity.name: self._getValue(entity, unpacked[i] if i < len(unpacked) else entity.default_value)
+                entity.name: self._getValue(entity, unpacked[i] if i < len(unpacked) else None)
                 for i, entity in enumerate(self._entityKeys)
             }
             observations.append(ModelObservation(timeVal, label, sensorValues))
         return observations
-
-    def setDefaultValue(self, sensorName: str, value: Any) -> None:
-        if sensorName == "*":
-            self._saveSetting("unknown_value", value)
-            return
-
-        if sensorName not in self._entityKeySet:
-            raise ValueError("Sensor not found")
-
-        entity = next(s for s in self._entityKeys if s.name == sensorName)
-        if self._getType(value) != entity.type:
-            raise ValueError("Type mismatch")
-
-        packed = struct.pack(self.TYPE_FORMATS[entity.type], self._getDbValue(value))
-        with self.lock, self._db:
-            self._db.execute("UPDATE SensorKeys SET default_value = ? WHERE name = ?", (packed, sensorName))
-            self._db.commit()
 
     def getEntityKeys(self):
         return self._entityKeys

@@ -19,7 +19,6 @@
         {% endfor %}
 
         <th style="padding: 0.75rem; min-width: 180px;">Label</th>
-        <th style="padding: 0.75rem; text-align: center;">Explicit Match</th>
         <th style="padding: 0.75rem; text-align: center;">Actions</th>
       </tr>
     </thead>
@@ -48,13 +47,6 @@
               <option value="{{ label }}" {% if obs.label == label %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
-        </td>
-
-        <td style="text-align: center;">
-          <input
-            type="checkbox"
-            {% if obs.explicitMatch %}checked{% endif %}
-            onchange="toggleExplicitMatch('{{ model.name }}', '{{ obs.time }}', this.checked)">
         </td>
 
         <td style="text-align: center;">
