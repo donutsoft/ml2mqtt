@@ -1,0 +1,21 @@
+{% extends "preprocessors/preprocessor_base.html" %}
+
+{% block content %}
+<div class="formField">
+  <label for="windowSize">Window Size for Rolling Average:</label>
+  <input type="number" id="windowSize" name="windowSize" value="{{ config.windowSize | default('3') }}" min="1">
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const windowSizeInput = document.getElementById("windowSize");
+
+  windowSizeInput.addEventListener("input", function() {
+    const value = parseInt(this.value, 10);
+    if (isNaN(value) || value < 1) {
+      this.value = 1;
+    }
+  });
+});
+</script>
+{% endblock %}
