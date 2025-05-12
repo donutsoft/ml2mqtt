@@ -34,7 +34,11 @@ class RollingAverage(BasePreprocessor):
             if len(rollingData[entity]) > self.windowSize and len(rollingData[entity]) > 0:
                 rollingData[entity].pop(0)
 
-            result[entity] = round(sum(rollingData[entity]) / len(rollingData[entity]), 4)
+            filteredData = [x for x in rollingData[entity] if x is not None]
+            if len(filteredData) == 0:
+                result[entity] = None
+            else:
+                result[entity] = round(sum(filteredData) / len(filteredData), 4)
 
         return result
     
