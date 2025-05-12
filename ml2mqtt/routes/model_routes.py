@@ -46,13 +46,14 @@ def init_model_routes(model_manager: ModelManager):
                 abort(400, "Missing model name")
             if mqttTopic is None:
                 abort(400, "Missing MQTT topic")
-
             newModel = model_manager.addModel(modelName)
             newModel.setMqttTopic(mqttTopic)
             newModel.setName(modelName)
+            newModel.addPreprocessor("type_caster", { 'sensor': [{"SELECT_ALL": True }]})
+            newModel.addPreprocessor("null_handler", { 'sensor': [{"SELECT_ALL": True }], 'replacementType': 'float', 'nullReplacement': defaultValue})
+            newModel.addPostprocessor("only_diff", {})
             newModel.subscribeToMqttTopics()
-            # TODO: Add a default pipeline
-
+            
             return redirect(url_for("model.home"))
 
         return render_template("create-model.html", title="Add Model", active_page="create_model")
