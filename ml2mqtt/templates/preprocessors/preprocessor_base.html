@@ -19,7 +19,9 @@
       <!-- "All Sensors" Option -->
       <div style="display: flex; align-items: center;">
         <input type="checkbox" 
-               id="selectAll" 
+               id="selectAll"
+               name="sensor" 
+               value="SELECT_ALL"
                onclick="toggleSelectAll(this)" 
                style="cursor: pointer; width: 1rem; flex: 0 0 1rem;">
         <label for="selectAll" 
@@ -31,13 +33,14 @@
       <!-- Individual Sensor Items -->
       {% if sensors %}
         {% for sensor in sensors %}
-          <div style="display: flex; align-items: center;">
+          <div class="sensorItem" 
+               style="display: flex; align-items: center;">
             <input type="checkbox" 
                    id="sensor_{{ loop.index }}" 
                    class="sensorCheckbox" 
                    name="sensor" 
                    value="{{ sensor }}" 
-                   onclick="handleSensorSelection()" 
+                   onclick="handleSensorSelection(this)" 
                    style="cursor: pointer; width: 1rem; flex: 0 0 1rem;">
             <label for="sensor_{{ loop.index }}" 
                    style="cursor: pointer; margin-left: 0.5rem; color: #c0cbdc;">
@@ -53,36 +56,43 @@
   
     </div>
   </div>
-
+  
   {% block content %}{% endblock %}
   
   <script>
     function toggleSelectAll(selectAllCheckbox) {
       const checkboxes = document.querySelectorAll(".sensorCheckbox");
-      const isChecked = selectAllCheckbox.checked;
   
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = isChecked;
-      });
-  
-      updateSelectAllState();
+      if (selectAllCheckbox.checked) {
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = false;
+          checkbox.parentElement.style.display = "none";
+        });
+      } else {
+        checkboxes.forEach(checkbox => {
+          checkbox.parentElement.style.display = "flex";
+        });
+      }
     }
   
-    function handleSensorSelection() {
+    function handleSensorSelection(checkbox) {
       const allCheckbox = document.getElementById("selectAll");
       const checkboxes = document.querySelectorAll(".sensorCheckbox");
+      
+      // If any checkbox is selected, disable "Select All"
+      const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+      allCheckbox.disabled = anyChecked;
   
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      const noneChecked = Array.from(checkboxes).every(cb => !cb.checked);
-  
-      allCheckbox.checked = allChecked;
-      allCheckbox.indeterminate = !allChecked && !noneChecked;
+      // If all checkboxes are unchecked, re-enable "Select All"
+      if (!anyChecked) {
+        allCheckbox.disabled = false;
+      }
     }
   
     function updateSelectAllState() {
       const allCheckbox = document.getElementById("selectAll");
       const checkboxes = document.querySelectorAll(".sensorCheckbox");
-  
+      
       const allChecked = Array.from(checkboxes).every(cb => cb.checked);
       const noneChecked = Array.from(checkboxes).every(cb => !cb.checked);
   

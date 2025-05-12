@@ -44,30 +44,12 @@ class PreprocessorFactory:
                 continue
                 
             self._logger.info(f"Processor: {processor}")
-            schema = processor.config_schema
-            if schema and "required" in schema and isinstance(schema["required"], set):
-                schema = schema.copy()
-                schema["required"] = list(schema["required"])  # sets -> lists
-
             preprocessors.append({
                 "type": processor.type,
                 "name": processor.name,
                 "description": processor.description,
-                "config_schema": schema
             })
         return preprocessors
-
-
-        #"""Get a list of all available preprocessors with their metadata."""
-        #return [
-        #    {
-        #        "id": processor.id,
-        #        "type": processor.type,
-        #        "description": processor.description,
-        #        "config_schema": processor.config_schema
-        #    }
-        #    for processor in self._preprocessor_types.values()
-        #]
     
     def create(self, preprocessor_type: str, dbId: int, params: Dict[str, Any] = None) -> BasePreprocessor:
         """

@@ -1,5 +1,32 @@
 {% extends "preprocessors/preprocessor_base.html" %}
 
 {% block content %}
-<p>Hello world</p>
+<div class="formField">
+  <label for="nullReplacement">Replacement for null values:</label>
+  <input type="text" id="nullReplacement" name="nullReplacement" value="{{ config.nullReplacement | default('9999') }}" oninput="checkReplacementType()">
+</div>
+
+<div class="formField">
+  <label for="replacementType">Replacement Type:</label>
+  <select id="replacementType" name="replacementType">
+    <option value="float" selected>Float</option>
+    <option value="string">String</option>
+  </select>
+</div>
+
+<script>
+function checkReplacementType() {
+  const replacementInput = document.getElementById("nullReplacement");
+  const replacementType = document.getElementById("replacementType");
+
+  if (!isNaN(parseFloat(replacementInput.value)) && isFinite(replacementInput.value)) {
+    replacementType.value = "float";
+  } else {
+    replacementType.value = "string";
+  }
+}
+
+// Ensure correct selection on page load
+checkReplacementType();
+</script>
 {% endblock %}

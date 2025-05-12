@@ -255,7 +255,7 @@
   <div style="flex: 1;">
     <div class="sectionTitle">MQTT</div>
     <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
-      The values received most recently from MQTT
+      The values received most recently received from MQTT
     </h4>
 
     <!-- Produces Section -->
@@ -306,6 +306,12 @@
         <h4 style="margin: 0.1rem 0 0.6rem 0; font-weight: normal; color: #c0cbdc; font-size: 1rem;">
           {{ preprocessor.description }}
         </h4>
+
+        {% if preprocessor.config_string %}
+        <h5 style="margin: 0.4rem 0 0.5rem 0; font-weight: normal; color: #9ba9b4; font-size: 0.95rem;">
+          {{ preprocessor.config_string }}
+        </h5>
+        {% endif %}
 
         <!-- Consumes Section -->
         <div class="producesConsumes">
@@ -372,7 +378,7 @@
 </div>
 
   <!-- Add Preprocessor Modal -->
-  <div id="preprocessorModal" class="preprocessorOverlay">
+  <div id="preprocessorModal" class="preprocessorOverlay" style="display: none">
     <div class="overlayContent">
       <h4>Add Preprocessor</h4>
       <div class="formField">
@@ -425,8 +431,6 @@ function updatePreprocessorParamUI() {
   const configContainer = document.getElementById("preprocessorConfigContainer");
   const url = renderPreprocessorUrl.replace("__PLACEHOLDER__", type);
 
-  configContainer.innerHTML = "<p>Loading...</p>";
-
   fetch(url, {
     method: "POST",
     headers: {
@@ -459,33 +463,52 @@ function updatePreprocessorParamUI() {
   });
 }
 
-    function submitPreprocessor() {
-      const type = document.getElementById("preprocessorType").value;
-      const selected = availablePreprocessors.find(p => p.type === type);
-      if (!selected) return;
 
-      const params = {};
-      const props = selected.config_schema?.properties || {};
+function submitPreprocessor() {
+  const type = document.getElementById("preprocessorType").value;
+  const selected = availablePreprocessors.find(p => p.type === type);
+  if (!selected) return;
 
-      for (const paramName of Object.keys(props)) {
-        const input = document.getElementById(`preprocessorParam_${paramName}`);
-        if (input) {
-          const value = input.type === "number" ? parseInt(input.value) : input.value;
-          params[paramName] = value;
-        }
-      }
+  const params = {};
+  
+  // Collect parameters from the dynamically injected template
+  const configContainer = document.getElementById("preprocessorConfigContainer");
+  const inputs = configContainer.querySelectorAll("input, select, textarea, checkbox");
+  
+  inputs.forEach(input => {
+    let value = input.type === "number" ? parseFloat(input.value) : input.value;
 
-      const payload = { type, params };
-
-      fetch(addPreprocessorUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }).then(res => {
-        if (res.ok) window.location.reload();
-        else showToast("Error adding preprocessor", true);
-      });
+    if (input.type === "checkbox") {
+      value = {}
+      value[input.value] = input.checked;
     }
+
+    if (params[input.name] && !Array.isArray(params[input.name])) {
+      params[input.name] = [params[input.name], value]
+    } else if (params[input.name] && Array.isArray(params[input.name])) {
+      params[input.name].push(value)
+    } else {
+      params[input.name] = value
+    }
+  });
+
+  const payload = { type, params };
+
+  fetch(addPreprocessorUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (res.ok) window.location.reload();
+    else showToast("Error adding preprocessor", true);
+  })
+  .catch(err => {
+    console.error("Error submitting preprocessor:", err);
+    showToast("Error submitting preprocessor", true);
+  });
+}
+
     function removePreprocessor(index) {
     fetch(deletePreprocessorUrl, {
       method: "POST",

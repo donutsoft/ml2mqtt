@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, ClassVar
+import logging
 
 class BasePreprocessor(ABC):
     """Base class for all preprocessors."""
@@ -8,18 +9,9 @@ class BasePreprocessor(ABC):
     name: ClassVar[str] = "name"
     type: ClassVar[str] = "type"
     description: ClassVar[str] = "Base preprocessor"  # Human-readable description
-    
-    # Static configuration schema that must be defined by subclasses
-    config_schema: ClassVar[Dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "entity": {
-                "type": "string",
-                "description": "Target entity to process (empty for all entities)"
-            }
-        }
-    }
-    
+    logger = logging.getLogger(__name__)
+    sensors = []
+
     def __init__(self, dbId: int, **kwargs):
         """
         Initialize the preprocessor.
@@ -30,6 +22,7 @@ class BasePreprocessor(ABC):
         """
         self.dbId = dbId
         self.config = kwargs
+        self.sensors = set([key for item in self.config['sensor'] for key, value in item.items() if value is True])
     
     @abstractmethod
     def process(self, observation: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
@@ -53,6 +46,7 @@ class BasePreprocessor(ABC):
             "type": self.type,
             "dbId": self.dbId,
             "config": self.config,
+            "config_string": self.configToString(),
             "description": self.description
         }
     
@@ -65,3 +59,10 @@ class BasePreprocessor(ABC):
             entity=data.get("entity"),
             **data.get("config", {})
         ) 
+    
+    def canConsume(self, sensorKey: str) -> bool:
+        return "SELECT_ALL" in self.sensors or sensorKey in self.sensors
+    
+    @abstractmethod
+    def configToString(self) -> str:
+        return ""

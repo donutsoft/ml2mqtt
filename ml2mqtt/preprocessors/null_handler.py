@@ -8,38 +8,28 @@ class NullHandler(BasePreprocessor):
     name: ClassVar[str] = "Null Handler"
     type: ClassVar[str] = "null_handler"
     description: ClassVar[str] = "Replaces None values with predefined value suitable for an ML model."
-    
-    config_schema: ClassVar[Dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "entity": {
-                "type": "string",
-                "description": "Target entity to process (empty for all entities)"
-            }
-        }
-    }
-    
+        
     def __init__(self, dbId: int, **kwargs):
         super().__init__(dbId, **kwargs)
-        #self.model_store = ModelStore()
     
     def process(self, observation: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
         result = observation.copy()
         
-        # Process either a single entity or all entities
-        #entities_to_process = [self.entity] if self.entity else result.keys()
-        
-        #for entity in entities_to_process:
-        #    if entity not in result:
-        #        continue
-                
-        #    value = result[entity]
-            
-            # FIXME
-            # Replace None with default value if available
-            #if value is None:
-            #    default_value = self.model_store.get_default_value(entity)
-            #    if default_value is not None:
-            #        result[entity] = default_value
-        
+        for entity in result:
+            if not self.canConsume(entity):
+                continue
+
+            value = result[entity]
+            if value is None:
+                if self.config['replacementType'] == 'float':
+                    result[entity] = float(self.config['nullReplacement'])
+                else:
+                    result[entity] = self.config['nullReplacement']
+
         return result 
+    
+    def configToString(self) -> str:
+        if self.config['replacementType'] == 'float':
+            return "I will change values of None to " + self.config['nullReplacement']
+        else:
+            return "I will change values of None to '" + self.config['nullReplacement'] + "'"

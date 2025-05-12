@@ -10,7 +10,7 @@ class PreprocessorEvaluator:
         result = []
         for processor in self.preprocessors:
             procResult = processor.to_dict()
-            procResult['consumes'] = input
+            procResult['consumes'] = {sensor: value for sensor, value in input.items() if processor.canConsume(sensor)}
             procResult['produces'] = processor.process(input, {})
             input = procResult['produces']
             result.append(procResult)

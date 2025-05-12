@@ -16,16 +16,12 @@ class TypeCaster(BasePreprocessor):
         result = observation.copy()
         
         # Process either a single entity or all entities
-        #entities_to_process = [self.entity] if self.entity else result.keys()
-
-        entities_to_process = result.keys()
-        
-        for entity in entities_to_process:
-            if entity not in result:
+        #entities_to_process = [self.entity] if self.entity else result.keys()        
+        for entity in result:
+            if not self.canConsume(entity):
                 continue
-                
-            value = result[entity]
-            
+
+            value = result[entity]            
             # Handle string values
             if isinstance(value, str):
                 # Check for unknown values
@@ -41,14 +37,5 @@ class TypeCaster(BasePreprocessor):
         
         return result
     
-    @classmethod
-    def get_config_schema(cls) -> Dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "entity": {
-                    "type": "string",
-                    "description": "Target entity to process (empty for all entities)"
-                }
-            }
-        } 
+    def configToString(self) -> str:
+        return ""
