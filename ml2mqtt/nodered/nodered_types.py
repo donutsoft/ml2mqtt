@@ -20,6 +20,8 @@ class Node:
     def addWire(self, otherNode):
         self.wires.append(otherNode.id)
 
+    def addWires(self, otherNodes):
+        self.wires.append([item.id for item in otherNodes])
 
 class HomeAssistantSelector(Node):
     def __init__(self, node_name: str, entity_name: str, options: List[str]):
@@ -172,3 +174,68 @@ class HomeAssistantSensor(Node):
                 "debugEnabled": False
             }
         ]
+
+class HomeAssistantState(Node):
+    def __init__(self, node_name, entity_id=None):
+        super().__init__(node_name)
+        self.entity_id = entity_id
+        self.payload_value = ""
+        self.payload_value_type = "entity"
+
+
+    def setPayload(self, value, type):
+        self.payload_value = value
+        self.payload_value_type = type
+
+    def generate(self):
+        return [
+            {
+                "id": self.id,
+                "type": "api-current-state",
+                "name": self.nodeName,
+                "version": 3,
+                "outputs": 1,
+                "halt_if": "",
+                "halt_if_type": "str",
+                "halt_if_compare": "is",
+                "state_type": "str",
+                "blockInputOverrides": True,
+                "outputProperties": [
+                    {
+                        "property": "payload",
+                        "propertyType": "msg",
+                        "value": self.payload_value,
+                        "valueType": self.payload_value_type
+                    }
+                ],
+                "for": "0",
+                "forType": "num",
+                "forUnits": "minutes",
+                "override_topic": False,
+                "state_location": "payload",
+                "override_payload": "msg",
+                "entity_location": "data",
+                "override_data": "msg",
+                "entity_id": self.entity_id,
+                "wires": self.wires
+            }
+        ]
+
+class HomeAssistantStateChanged(Node):
+    def __init__(self, node_name: str, entities: List[str]):
+        super().__init__(node_name)
+        self.entities = entities
+
+    def generate(self):
+        return [{
+            "id": self.id,
+            "type": "server-state-changed",
+            "name": self.nodeName,
+            "outputOnlyOnStateChange": True,
+            "outputProperties": [
+                {"property": "payload", "propertyType": "msg", "value": "", "valueType": "entityState"},
+                {"property": "data", "propertyType": "msg", "value": "", "valueType": "eventData"},
+                {"property": "topic", "propertyType": "msg", "value": "", "valueType": "triggerId"}
+            ],
+            "wires": self.wires
+        }]

@@ -150,7 +150,7 @@ class ModelStore:
         sensorType = self._getType(value)
         with self.lock, self._db:
             try:
-                self._db.execute("INSERT INTO SensorKeys (name, type) VALUES (?, ?, ?)", (name, sensorType))
+                self._db.execute("INSERT INTO SensorKeys (name, type) VALUES (?, ?)", (name, sensorType))
                 self._db.commit()
                 self._entityKeys.append(EntityKey(name, sensorType))
                 self._entityKeySet.add(name)

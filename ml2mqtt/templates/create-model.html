@@ -18,8 +18,8 @@
     </div>
 
     <div class="form-group">
-        <label for="default_value">Initial number of input sensors</label>
-        <input type="number" id="sensor_count" name="default_value" value="1" step="any">
+        <label for="input_count">Initial number of input sensors</label>
+        <input type="number" id="input_count" name="input_count" value="1" step="any">
     </div>
 
     <div class="form-group">
@@ -65,7 +65,7 @@
     const addLabelBtn = document.getElementById("add_label_btn");
     const labelsInput = document.getElementById("labels_input");
 
-    let labels = [];
+    let labels = new Set();
 
     function slugify(text) {
         return text
@@ -113,39 +113,37 @@
     });
 
     addLabelBtn.addEventListener("click", function() {
-        const labelId = Date.now();
         const labelDiv = document.createElement("div");
         labelDiv.className = "label-item";
-        labelDiv.setAttribute("data-id", labelId);
-        labelDiv.innerHTML = `<input type="text" placeholder="Label" class="label-input" />
-                              <button type="button" class="remove-label-btn">X</button>`;
+
+        labelDiv.innerHTML = `
+            <input type="text" placeholder="Label" class="label-input" />
+            <button type="button" class="remove-label-btn">X</button>
+        `;
 
         labelsContainer.appendChild(labelDiv);
 
-        labelDiv.querySelector(".remove-label-btn").addEventListener("click", function() {
-            labelsContainer.removeChild(labelDiv);
-            labels = labels.filter(label => label.id !== labelId);
-            updateLabelsInput();
-        });
+        const input = labelDiv.querySelector(".label-input");
+        const removeBtn = labelDiv.querySelector(".remove-label-btn");
 
-        labelDiv.querySelector(".label-input").addEventListener("input", function() {
-            const value = this.value.trim();
-            const labelIndex = labels.findIndex(label => label.id === labelId);
-            if (labelIndex >= 0) {
-                labels[labelIndex].value = value;
-            } else {
-                labels.push({ id: labelId, value });
-            }
-            updateLabelsInput();
+        input.addEventListener("input", updateLabels);
+        removeBtn.addEventListener("click", function() {
+            labelsContainer.removeChild(labelDiv);
+            updateLabels();
         });
     });
 
-    function updateLabelsInput() {
-        const labelValues = labels.map(label => label.value).filter(Boolean);
-        labelsInput.value = JSON.stringify(labelValues);
-    }
+    function updateLabels() {
+        labels.clear();
+        const inputs = labelsContainer.querySelectorAll(".label-input");
+        inputs.forEach(input => {
+            const value = input.value.trim();
+            if (value) labels.add(value);
+        });
 
-    submitBtn.disabled = true;
+        labelsInput.value = JSON.stringify(Array.from(labels));
+        submitBtn.disabled = modelNameInput.value.trim() === "" || labels.size === 0;
+    }
 </script>
 
 {% endblock %}

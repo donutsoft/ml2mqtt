@@ -115,6 +115,8 @@ class ModelService:
         label: str = DISABLED_LABEL
         entityMap: Dict[str, Any] = {}
 
+        self._logger.error(f"My entities are: {entities}")
+
         for entity in entities:
             if "label" in entity:
                 label = entity["label"]
@@ -146,6 +148,7 @@ class ModelService:
             return        
 
         entityValues = self._modelstore.sortEntityValues(entityMap, False)
+
         if label != DISABLED_LABEL:
             learningType = self.getLearningType()
             if learningType == "EAGER" or (learningType == "LAZY" and self._model.predictLabel(entityValues) != label):
@@ -186,7 +189,7 @@ class ModelService:
         return self._modelstore.getModelSize()
 
     def getLabels(self) -> List[str]:
-        return self._modelstore.getLabels()
+        return self._modelstore.getLabels() + self.getModelConfig("labels", [])
 
     def deleteEntity(self, entityName: str) -> None:
         self._modelstore.deleteEntity(entityName)
@@ -194,11 +197,25 @@ class ModelService:
         self._populateModel()
 
     def getLabelStats(self) -> Optional[Dict[str, Any]]:
-        return self._model.getLabelStats()
+        labelStats = self._model.getLabelStats() or {}
+        for extraLabel in self.getLabels():
+            if not extraLabel in labelStats.keys():   
+                labelStats[extraLabel] = {
+                    "support":0,
+                    "precision": 0,
+                    "recall": 0,
+                    "f1": 0,
+                }        
+        return labelStats
 
     def deleteObservationsByLabel(self, label: str) -> None:
         """Delete all observations with the given label."""
         self._modelstore.deleteObservationsByLabel(label)
+
+        presavedLabels = self.getModelConfig("labels", [])
+        presavedLabels.remove(label)
+        self.setModelConfig("labels", presavedLabels)
+
         # Rebuild the model after deletion
         self._populateModel()
 
@@ -338,6 +355,18 @@ class ModelService:
         else:
             return []
     
+    def setModelConfig(self, key, value):
+        current = self._modelstore.getDict("config")
+        current[key] = value
+        self._modelstore.saveDict("config", current)
+    
+    def getModelConfig(self, key, default):
+        config = self._modelstore.getDict("config")
+        self._logger.error(f"Get model config {config}")
+        if key in config:
+            return config[key]
+        else:
+            return default
 
     def generateNodeRed(self) -> str:
         nodeRedGenerator = NodeRedGenerator(self)

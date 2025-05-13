@@ -41,6 +41,16 @@ def init_model_routes(model_manager: ModelManager):
             modelName = request.form.get("model_name")
             defaultValue = request.form.get("default_value")
             mqttTopic = request.form.get("mqtt_topic")
+            labels = []
+            try:
+                labels = json.loads(request.form.get("labels", "[]"))
+                if not isinstance(labels, list):
+                    raise ValueError
+                labels = sorted(set(labels))
+            except (json.JSONDecodeError, ValueError):
+                abort(400, "Invalid labels format")
+
+            logger.error(f"Request {request.form}")
 
             if modelName is None:
                 abort(400, "Missing model name")
@@ -49,11 +59,14 @@ def init_model_routes(model_manager: ModelManager):
             newModel = model_manager.addModel(modelName)
             newModel.setMqttTopic(mqttTopic)
             newModel.setName(modelName)
+            newModel.setModelConfig("labels", sorted(list(set(labels))))
+            newModel.setModelConfig("input_count", int(request.form.get("input_count")))
             newModel.addPreprocessor("type_caster", { 'sensor': [{"SELECT_ALL": True }]})
             newModel.addPreprocessor("null_handler", { 'sensor': [{"SELECT_ALL": True }], 'replacementType': 'float', 'nullReplacement': defaultValue})
             newModel.addPostprocessor("only_diff", {})
+            newModel.setLearningType("EAGER")
             newModel.subscribeToMqttTopics()
-            
+
             return redirect(url_for("model.home"))
 
         return render_template("create-model.html", title="Add Model", active_page="create_model")
