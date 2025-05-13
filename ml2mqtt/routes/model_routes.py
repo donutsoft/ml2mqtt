@@ -48,7 +48,7 @@ def init_model_routes(model_manager: ModelManager):
                     raise ValueError
                 labels = sorted(set(labels))
             except (json.JSONDecodeError, ValueError):
-                abort(400, "Invalid labels format")
+                pass
 
             logger.error(f"Request {request.form}")
 

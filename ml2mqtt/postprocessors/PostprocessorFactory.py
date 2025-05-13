@@ -30,7 +30,6 @@ class PostprocessorFactory:
                             issubclass(attr, BasePostprocessor) and 
                             attr != BasePostprocessor):
                             self._postprocessor_types[attr.type] = attr
-                            self._logger.info(f"Loaded postprocessor: {attr.type}")
                 except Exception as e:
                     self._logger.error(f"Failed to load postprocessor module {module_name}: {e}")
     
@@ -42,7 +41,6 @@ class PostprocessorFactory:
             if processor.type == "base" or processor == BasePostprocessor:
                 continue
                 
-            self._logger.info(f"Processor: {processor}")
             schema = processor.config_schema
             if schema and "required" in schema and isinstance(schema["required"], set):
                 schema = schema.copy()

@@ -114,7 +114,7 @@ class ModelStore:
 
     def _getType(self, variable: Any) -> int:
         if isinstance(variable, int):
-            return self.TYPE_INT
+            return self.TYPE_FLOAT
         elif isinstance(variable, float):
             return self.TYPE_FLOAT
         elif isinstance(variable, str):

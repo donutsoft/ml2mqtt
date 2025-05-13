@@ -11,7 +11,6 @@ class Node:
     def __init__(self, node_name):
         self.nodeName = node_name
         self.id = generate_random_id()
-        self.server_id = 'qm2m0pytzpm6tf7c'
         self.wires = []
 
     def generate(self):
@@ -239,3 +238,28 @@ class HomeAssistantStateChanged(Node):
             ],
             "wires": self.wires
         }]
+
+class DelayNode(Node):
+    def __init__(self, node_name: str, durationMs: str):
+        super().__init__(node_name)
+        self.durationMs = durationMs
+
+    def generate(self):
+        return [{
+        "id": self.id,
+        "type": "delay",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": self.durationMs,
+        "timeoutUnits": "milliseconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": False,
+        "allowrate": False,
+        "outputs": 1,
+        "wires": self.wires
+    }]

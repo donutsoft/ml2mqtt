@@ -115,8 +115,6 @@ class ModelService:
         label: str = DISABLED_LABEL
         entityMap: Dict[str, Any] = {}
 
-        self._logger.error(f"My entities are: {entities}")
-
         for entity in entities:
             if "label" in entity:
                 label = entity["label"]

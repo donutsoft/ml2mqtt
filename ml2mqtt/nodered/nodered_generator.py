@@ -1,4 +1,4 @@
-from .nodered_types import HomeAssistantSelector, JoinNode, MqttOutputNode, HomeAssistantSensor, MqttInputNode, HomeAssistantState, HomeAssistantStateChanged
+from .nodered_types import HomeAssistantSelector, JoinNode, MqttOutputNode, HomeAssistantSensor, MqttInputNode, HomeAssistantState, HomeAssistantStateChanged, DelayNode
 import json
 
 class NodeRedGenerator:
@@ -25,7 +25,8 @@ class NodeRedGenerator:
 
         # Create HomeAssistant state reader for every entity
 
-        trainerState = HomeAssistantState(f"{self.modelService.getName()} Trainer (Ignore error on first deploy)", f"select.{self.modelService.getName().lower()}_trainer")
+        trainerName = f"select.{self.modelService.getName().lower().replace('-','_').replace(' ','_')}_trainer"
+        trainerState = HomeAssistantState(f"{self.modelService.getName()} Trainer (Ignore error on first deploy)", trainerName)
         trainerState.setPayload("{ 'label': $entity().state }", "jsonata")
         states = [trainerState]
         states += [
@@ -38,8 +39,11 @@ class NodeRedGenerator:
             result.extend(state.generate())
 
         stateChanged.addWires(states)
-        selector.addWires(states)
+        delayNode = DelayNode("selector delay", 500)
+        delayNode.addWires(states)
+        selector.addWire(delayNode)
 
+        result.extend(delayNode.generate())
         result.extend(selector.generate())
         result.extend(joinNode.generate())
         result.extend(mqttOutput.generate())

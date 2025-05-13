@@ -30,7 +30,6 @@ class PreprocessorFactory:
                             issubclass(attr, BasePreprocessor) and 
                             attr != BasePreprocessor):
                             self._preprocessor_types[attr.type] = attr
-                            self._logger.info(f"Loaded preprocessor: {attr.type}")
                 except Exception as e:
                     self._logger.error(f"Failed to load preprocessor module {module_name}: {e}")
     
@@ -43,14 +42,13 @@ class PreprocessorFactory:
             if processor.type == "base" or processor == BasePreprocessor:
                 continue
                 
-            self._logger.info(f"Processor: {processor}")
             preprocessors.append({
                 "type": processor.type,
                 "name": processor.name,
                 "description": processor.description,
             })
         return preprocessors
-    
+     
     def create(self, preprocessor_type: str, dbId: int, params: Dict[str, Any] = None) -> BasePreprocessor:
         """
         Create a preprocessor instance.
