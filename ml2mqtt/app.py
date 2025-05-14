@@ -20,6 +20,17 @@ class UTCFormatter(logging.Formatter):
         dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')  # ISO 8601 UTC
 
+class IngressMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        ingress_path = environ.get("HTTP_X_INGRESS_PATH")
+        if ingress_path:
+            environ["SCRIPT_NAME"] = ingress_path
+        return self.app(environ, start_response)
+
+
 streamHandler.setFormatter(UTCFormatter('%(asctime)s - %(levelname)s - %(message)s'))
 
 logger = logging.getLogger()
@@ -30,6 +41,8 @@ logger.addHandler(streamHandler)
 os.makedirs("models", exist_ok=True)
 
 app = Flask(__name__, static_url_path='')
+app.wsgi_app = IngressMiddleware(app.wsgi_app)
+
 @app.context_processor
 def inject_globals():
     return dict(
