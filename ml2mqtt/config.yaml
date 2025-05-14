@@ -1,6 +1,6 @@
 name: "ml2mqtt"
 description: "Machine learning for MQTT"
-version: "1.1.4"
+version: "1.1.5"
 slug: "ml2mqtt"
 init: false
 arch:
@@ -13,5 +13,20 @@ ingress: true
 ingress_port: 5000
 panel_icon: "mdi:web"
 panel_title: "ml2mqtt"
-options:
-  mqtt_broker: "core-mosquitto"
+schema:
+  mqtt_server:
+    type: str
+    default: "core-moquitto"
+    description: "The host name or IP address of the MQTT server"
+  mqtt_port:
+    type: int
+    default: 1883
+    description: "The port of the MQTT server"
+  mqtt_username:
+    type: str
+    default: "mqtt"
+    description: "The username used to access the MQTT server"
+  mqtt_password:
+    type: str
+    default: "mqtt"
+    description: "The password used to access the MQTT server"
