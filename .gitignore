@@ -7,6 +7,8 @@ models/
 *.pyd
 *.db
 ml2mqtt/.DS_Store
+settings.json
+ml2mqtt/settings.json
 
 # IDE
 .vscode/
