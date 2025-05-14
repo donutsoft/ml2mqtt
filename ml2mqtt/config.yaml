@@ -13,24 +13,12 @@ ingress_port: 5000
 panel_icon: "mdi:web"
 panel_title: "ml2mqtt"
 options:
-  mqtt_server: "core-mosquitto"
-  mqtt_port: 1883
-  mqtt_username: "mqtt"
-  mqtt_password: "mqtt"
+  mqtt-server: "core-mosquitto"
+  mqtt-port: 1883
+  mqtt-username: "mqtt"
+  mqtt-password: "mqtt"
 schema:
-  mqtt_server:
-    type: str
-    default: "core-mosquitto"
-    description: "The host name or IP address of the MQTT server"
-  mqtt_port:
-    type: int
-    default: 1883
-    description: "The port of the MQTT server"
-  mqtt_username:
-    type: str
-    default: "mqtt"
-    description: "The username used to access the MQTT server"
-  mqtt_password:
-    type: str
-    default: "mqtt"
-    description: "The password used to access the MQTT server"
+  mqtt-server: "str"
+  mqtt-port: "int"
+  mqtt-username: "str"
+  mqtt-password: "str"

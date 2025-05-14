@@ -13,10 +13,10 @@ class Config:
                 options = json.load(file)
                 self.config = {
                     "mqtt": {
-                        "server": options.get("mqtt_server", "core-mosquitto"),
-                        "port": options.get("mqtt_port", 1883),
-                        "username": options.get("mqtt_username", "mqtt"),
-                        "password": options.get("mqtt_password", "mqtt")
+                        "server": options.get("mqtt-server", "core-mosquitto"),
+                        "port": options.get("mqtt-port", 1883),
+                        "username": options.get("mqtt-username", "mqtt"),
+                        "password": options.get("mqtt-password", "mqtt")
                     }
                 }
         elif settings_path.exists():
