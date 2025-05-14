@@ -2,7 +2,6 @@ name: "ml2mqtt"
 description: "Machine learning for MQTT"
 version: "1.1.6"
 slug: "ml2mqtt"
-init: false
 arch:
   - aarch64
   - amd64
@@ -21,7 +20,7 @@ options:
 schema:
   mqtt_server:
     type: str
-    default: "core-moquitto"
+    default: "core-mosquitto"
     description: "The host name or IP address of the MQTT server"
   mqtt_port:
     type: int
