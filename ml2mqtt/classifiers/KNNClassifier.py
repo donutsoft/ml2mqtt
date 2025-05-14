@@ -85,7 +85,12 @@ class KNNClassifier:
 
         try:
             y_pred = self._pipeline.predict(X)
-            return self.labelEncoder.inverse_transform(y_pred)[0]
+            y_prob = self._pipeline.predict_proba(X)
+
+            label = self.labelEncoder.inverse_transform(y_pred)[0]
+            confidence = max(y_prob[0])  # Confidence level as the probability of the predicted label
+
+            return label, confidence
         except Exception as e:
             self.logger.error(f"Prediction failed: {e}")
             return None

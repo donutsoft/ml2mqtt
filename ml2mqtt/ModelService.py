@@ -155,18 +155,18 @@ class ModelService:
                 self._modelstore.addObservation(label, entityValues)
                 self._populateModel()
 
-        prediction = self._model.predictLabel(entityValues)
-        
+        prediction, confidence = self._model.predictLabel(entityValues)
+        confidence = round(confidence, 4)
         # Apply postprocessors
         observation = entityValues
         for postprocessor in self._postprocessors:
-            observation, prediction = postprocessor.process(observation, prediction)
+            observation, prediction = postprocessor.process(observation, prediction, confidence)
             if prediction is None:
                 return
 
         topic = self.getMqttTopic()
-        self._mqttClient.publish(f"{topic}/state", json.dumps({"state": prediction}))
-        self._logger.info("Predicted label: %s", prediction)
+        self._mqttClient.publish(f"{topic}/state", json.dumps({"state": prediction, "confidence": confidence}))
+        self._logger.info(f"Predicted label: {prediction} with confidence {confidence}")
 
     def getMqttTopic(self) -> str:
         return self._modelstore.getMqttTopic() or ""

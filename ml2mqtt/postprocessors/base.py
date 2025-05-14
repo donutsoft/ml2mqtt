@@ -26,7 +26,7 @@ class BasePostprocessor(ABC):
         self.config = kwargs
     
     @abstractmethod
-    def process(self, observation: Dict[str, Any], label: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
+    def process(self, observation: Dict[str, Any], label: Any, confidence: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
         """
         Process the observation and label.
         
@@ -56,7 +56,8 @@ class BasePostprocessor(ABC):
         Create postprocessor instance from dictionary.
         """
         return cls(**data.get("config", {})) 
-    
+  
     @abstractmethod
     def configToString(self) -> str:
         return ""
+  

@@ -24,9 +24,10 @@ class OnlyDiffPostprocessor(BasePostprocessor):
         """
         super().__init__(**kwargs)
         self.last_label = None
+        self.last_confidence = None
         self.logger = logging.getLogger(__file__)
     
-    def process(self, observation: Dict[str, Any], label: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
+    def process(self, observation: Dict[str, Any], label: Any, confidence: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
         """
         Process the observation and label, dropping if same as previous.
         
@@ -37,10 +38,11 @@ class OnlyDiffPostprocessor(BasePostprocessor):
         Returns:
             Tuple of (observation, label or None if same as previous)
         """
-        if label == self.last_label:
+        if label == self.last_label and confidence == self.last_confidence:
             return observation, None
         
         self.last_label = label
+        self.last_confidence = confidence
         return observation, label 
     
     def configToString(self) -> str:

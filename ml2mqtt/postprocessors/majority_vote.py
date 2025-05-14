@@ -32,7 +32,7 @@ class MajorityVotePostprocessor(BasePostprocessor):
         self.window_size = window_size
         self.window = deque(maxlen=window_size)
     
-    def process(self, observation: Dict[str, Any], label: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
+    def process(self, observation: Dict[str, Any], label: Any, confidence: Any) -> Tuple[Dict[str, Any], Optional[Any]]:
         """
         Process the observation and label using majority voting.
         
