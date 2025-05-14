@@ -223,6 +223,12 @@ class ModelService:
         # Rebuild the model after deletion
         self._populateModel()
 
+    def deleteObservationsSince(self, timestamp: int) -> None:
+            """Delete an observation by its timestamp."""
+            self._modelstore.deleteObservationsSince(timestamp)
+            # Rebuild the model after deletion
+            self._populateModel()
+
     def optimizeParameters(self) -> None:
         best_params = self._model.optimizeParameters(self._modelstore.getObservations())
 

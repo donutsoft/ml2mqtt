@@ -2,6 +2,12 @@
 <h4 style="color: #7e8c9c; margin-top: -0.25rem; margin-bottom: 1.5rem;">Model: {{ model.name }}</h4>
 
 {% if model.observations %}
+<div style="display: flex; justify-content: flex-end; margin-bottom: 1rem; gap: 10px;">
+  <button onclick="deleteObservations('{{ model.name }}', 'hour')" style="background-color: #ffa64d; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Delete Last Hour</button>
+  <button onclick="deleteObservations('{{ model.name }}', 'day')" style="background-color: #ff704d; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Delete Last Day</button>
+  <button onclick="deleteObservations('{{ model.name }}', 'week')" style="background-color: #cc4444; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Delete Last Week</button>
+  <button onclick="deleteObservations('{{ model.name }}', 'all')" style="background-color: #e6b800; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Delete All</button>
+</div>
   <table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
     <thead>
       <tr style="background-color: #1f2d3a;">
@@ -98,6 +104,28 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ entityId, value })
     });
+  }
+
+  async function deleteObservations(modelName, scope) {
+    if (!confirm(`Are you sure you want to delete observations from the last ${scope}?`)) return;
+
+    try {
+      const res = await fetch(`/api/model/${modelName}/observations/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope })
+      });
+
+      if (res.ok) {
+        location.reload();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete observations");
+      }
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      alert(`An error occurred while deleting observations: ${error.message}`);
+    }
   }
 
   async function deleteObservation(modelName, obsTime) {

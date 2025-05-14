@@ -47,12 +47,13 @@ class ProcessorType(Enum):
     POSTPROCESSOR = "Postprocessors"
 
 class ModelStore:
+    TYPE_INT = 0
     TYPE_FLOAT = 1
     TYPE_STRING = 2
 
     TYPE_FORMATS = {
         TYPE_FLOAT: "f",
-        TYPE_STRING: "i",  # stored as int reference to string table
+        TYPE_STRING: "f",  # stored as int reference to string table
     }
 
     def __init__(self, modelPath: str):
@@ -128,7 +129,8 @@ class ModelStore:
     def _getDbValue(self, variable: Any) -> Union[int, float]:
         varType = self._getType(variable)
         if varType == self.TYPE_STRING:
-            return self._getStringId(variable)
+            stringId = self._getStringId(variable)
+            return stringId
         elif varType == self.TYPE_FLOAT:
             return float(variable)
         raise ValueError(f"Unsupported type: {variable}")
@@ -163,13 +165,15 @@ class ModelStore:
         # Filter entity values based on known entity keys
         for entity in self._entityKeys:
             val = entityMap.get(entity.name)
-            values[entity.name] = self._getDbValue(val)
+            values[entity.name] = val
             remaining.discard(entity.name)
 
         if forTraining:
+            self.logger.error(f"{remaining}")
             for key in remaining:
+                self.logger.error(f"{key} = {entityMap[key]}")
                 self._addSensorType(key, entityMap[key])
-                values[key] = self._getDbValue(entityMap[key])
+                values[key] = entityMap[key]
 
         return values
 
@@ -246,6 +250,14 @@ class ModelStore:
     def deleteObservation(self, time: int) -> None:
         with self.lock, self._db:
             self._db.execute("DELETE FROM Observations WHERE time = ?", (time,))
+            self._db.commit()
+
+    def deleteObservationsSince(self, timestamp: float) -> None:
+        """
+        Deletes all observations with a timestamp greater than or equal to the provided timestamp.
+        """
+        with self.lock, self._db:
+            self._db.execute("DELETE FROM Observations WHERE time >= ?", (timestamp,))
             self._db.commit()
 
     def deleteEntity(self, entityName: str) -> None:

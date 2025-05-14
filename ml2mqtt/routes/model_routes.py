@@ -12,6 +12,8 @@ from postprocessors.PostprocessorFactory import PostprocessorFactory
 from preprocessors.PreprocessorFactory import PreprocessorFactory
 from ModelManager import ModelManager
 from PreprocessorEvaluator import PreprocessorEvaluator
+from datetime import timedelta, datetime
+
 logger = logging.getLogger("ml2mqtt.routes.model")
 model_bp = Blueprint('model', __name__)
 
@@ -126,8 +128,6 @@ def init_model_routes(model_manager: ModelManager):
         elif section == "preprocessors":
             logger.info(f"{list(map(lambda processor: processor.to_dict(),model_manager.getModel(modelName).getPreprocessors()))}")
             recentObservations = model_manager.getModel(modelName).getMostRecentMqttObservations()
-
-            logger.error(f"Recent observations: {recentObservations}")
             model.recentMqtt = None if len(recentObservations) == 0 else recentObservations[-1]
             evaluator = PreprocessorEvaluator(model_manager.getModel(modelName).getPreprocessors())
             model.preprocessors = evaluator.evaluate(recentObservations)
@@ -251,7 +251,35 @@ def init_model_routes(model_manager: ModelManager):
             return jsonify({"success": True})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+    @model_bp.route("/api/model/<string:modelName>/observations/delete", methods=["POST"])
+    def apiDeleteObservations(modelName: str) -> str:
+        try:
+            logger.error("got here")
+            data = request.get_json()
+            scope = data.get("scope")
 
+            if not scope:
+                return jsonify({"error": "Scope parameter is required"}), 400
+
+            now = datetime.utcnow()
+
+            if scope == "all":
+                timestamp = 0  # Effectively deletes all observations
+            elif scope == "hour":
+                timestamp = (now - timedelta(hours=1)).timestamp()
+            elif scope == "day":
+                timestamp = (now - timedelta(days=1)).timestamp()
+            elif scope == "week":
+                timestamp = (now - timedelta(weeks=1)).timestamp()
+            else:
+                return jsonify({"error": "Invalid scope parameter"}), 400
+
+            model_manager.getModel(modelName).deleteObservationsSince(timestamp)
+            return jsonify({"success": True})
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
     @model_bp.route("/edit-model/<string:modelName>/model-settings/<string:modelType>")
     def getModelSettingsTemplate(modelName: str, modelType: str) -> str:
         if modelType not in ["RandomForest", "KNN"]:
