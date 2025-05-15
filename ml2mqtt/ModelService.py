@@ -28,6 +28,7 @@ class ModelService:
         
         self._modelType: str
         self._allParams: Dict[str, Dict[str, Any]] = {}
+        self._recentMqtt = []
         self._populateModel()
         self._loadPostprocessors()
         self._loadPreprocessors()
@@ -96,6 +97,10 @@ class ModelService:
         return self._model.getAccuracy()
 
     def predictLabel(self, msg: Any) -> None:
+        self._recentMqtt.append(msg)
+        if len(self._recentMqtt) > 10:
+            self._recentMqtt.pop(0)
+
         messageStr: str
         if hasattr(msg, "payload"):
             try:
@@ -301,6 +306,7 @@ class ModelService:
             # Then create the postprocessor instance
             preprocessor = self._preprocessorFactory.create(type, dbId, params)
             self._preprocessors.append(preprocessor)
+            self.deleteObservationsSince(0)
         except Exception as e:
             # If postprocessor creation fails, delete from database.
             if 'dbId' in locals():
@@ -320,6 +326,7 @@ class ModelService:
             deletedProcessor = self._preprocessors.pop(index)
             
             self._modelstore.deletePreprocessor(deletedProcessor.dbId)
+            self.deleteObservationsSince(0)
 
     def reorderPreprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder preprocessors."""
@@ -329,7 +336,7 @@ class ModelService:
             self._preprocessors.insert(to_index, preprocessor)
             self._logger.error("Reordering preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
             self._modelstore.reorderPreprocessors(map(lambda p: p.dbId, self._preprocessors))
-
+            self.deleteObservationsSince(0)
 
     def reorderPostprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder postprocessors."""
@@ -375,3 +382,6 @@ class ModelService:
     def generateNodeRed(self) -> str:
         nodeRedGenerator = NodeRedGenerator(self)
         return nodeRedGenerator.generate()
+    
+    def getRecentMqtt(self) -> str:
+        return self._recentMqtt

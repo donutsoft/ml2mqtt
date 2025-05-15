@@ -15,6 +15,11 @@ logStream = StringIO()
 streamHandler = logging.StreamHandler(logStream)
 streamHandler.setLevel(logging.INFO)
 
+class ExcludeEndpointFilter(logging.Filter):
+    def filter(self, record):
+        # Exclude logs that contain specific endpoint
+        return "/logs/raw" not in record.getMessage()
+
 class UTCFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
@@ -36,6 +41,9 @@ streamHandler.setFormatter(UTCFormatter('%(asctime)s - %(levelname)s - %(message
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(streamHandler)
+# Apply the filter
+for handler in logging.getLogger().handlers:
+    handler.addFilter(ExcludeEndpointFilter())
 
 # Create models directory if it doesn't exist
 os.makedirs("models", exist_ok=True)

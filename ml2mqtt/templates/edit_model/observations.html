@@ -14,14 +14,7 @@
         <th style="padding: 0.75rem;">Timestamp</th>
 
         {% for entityId in model.observations[0].sensorValues %}
-        <th style="
-          padding: 0.5rem;
-          text-align: center;
-          font-size: 0.75rem;
-          white-space: normal;
-          word-break: break-word;
-          max-width: 100px;
-        ">{{ entityId }}</th>
+        <th style="padding: 0.5rem; text-align: center; font-size: 0.75rem; white-space: normal; word-break: break-word; max-width: 100px;">{{ entityId }}</th>
         {% endfor %}
 
         <th style="padding: 0.75rem; min-width: 180px;">Label</th>
@@ -38,16 +31,16 @@
           <input
             type="text"
             value="{{ obs.sensorValues[entityId] }}"
-            onblur="updateEntityValue('{{ model.name }}', '{{ obs.time }}', '{{ entityId }}', this.value)"
-            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px;"
+            readonly
+            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px; cursor: not-allowed;"
           >
         </td>
         {% endfor %}
 
         <td style="padding: 0.75rem;">
           <select
-            onchange="updateLabel('{{ model.name }}', '{{ obs.time }}', this.value)"
-            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px;"
+            disabled
+            style="width: 100%; background-color: #1f2d3a; color: white; border: 1px solid #333; border-radius: 4px; padding: 4px; cursor: not-allowed;"
           >
             {% for label in model.labels %}
               <option value="{{ label }}" {% if obs.label == label %}selected{% endif %}>{{ label }}</option>
@@ -65,52 +58,18 @@
       {% endfor %}
     </tbody>
   </table>
-  <div style="margin-top: 2rem; text-align: center;">
-    {% if model.totalPages > 1 %}
-      {% for page in range(1, model.totalPages + 1) %}
-        {% if page == model.currentPage %}
-          <span style="margin: 0 6px; font-weight: bold; color: #fff;">{{ page }}</span>
-        {% else %}
-          <a href="{{ url_for('model.editModel', modelName=model.name, page=page, section='observations') }}"
-             style="margin: 0 6px; color: #66b2ff;">{{ page }}</a>
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-  </div>
 {% else %}
   <p style="margin-top: 2rem;">No observations found for this model.</p>
 {% endif %}
 
 <script>
-  async function toggleExplicitMatch(modelName, obsTime, isChecked) {
-    await fetch(`/api/model/${modelName}/observation/${obsTime}/explicit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ explicitMatch: isChecked })
-    });
-  }
-
-  async function updateLabel(modelName, obsTime, newLabel) {
-    await fetch(`/api/model/${modelName}/observation/${obsTime}/label`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ label: newLabel })
-    });
-  }
-
-  async function updateEntityValue(modelName, obsTime, entityId, value) {
-    await fetch(`/api/model/${modelName}/observation/${obsTime}/entity`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entityId, value })
-    });
-  }
-
   async function deleteObservations(modelName, scope) {
+    const deleteObservationsUrl = "{{ url_for('model.apiDeleteObservations', modelName=model.name) }}";
+
     if (!confirm(`Are you sure you want to delete observations from the last ${scope}?`)) return;
 
     try {
-      const res = await fetch(`/api/model/${modelName}/observations/delete`, {
+      const res = await fetch(deleteObservationsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope })
@@ -127,32 +86,33 @@
       alert(`An error occurred while deleting observations: ${error.message}`);
     }
   }
-
+  
   async function deleteObservation(modelName, obsTime) {
-    if (!confirm("Are you sure you want to delete this observation?")) return;
+  if (!confirm("Are you sure you want to delete this observation?")) return;
+  const baseDeleteUrl = "{{ url_for('model.apiDeleteObservation', modelName='MODEL_NAME', observationTime=0.0) }}";
+  const deleteUrl = baseDeleteUrl.replace('/0.0/', `/${encodeURIComponent(obsTime)}/`).replace('/MODEL_NAME/', `/${encodeURIComponent(modelName)}/`);
 
-    try {
-      const res = await fetch(`/api/model/${modelName}/observation/${obsTime}/delete`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (res.ok) {
-        const row = document.getElementById(`observationRow-${obsTime}`);
-        if (row) {
-          row.remove();
-          showToast("Observation deleted successfully");
-        }
-      } else {
-        const data = await res.json();
-        showToast(data.error || "Failed to delete observation", true);
+  try {
+    const res = await fetch(deleteUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
       }
-    } catch (error) {
-      showToast("An error occurred while deleting the observation", true);
+    });
+
+    if (res.ok) {
+      const row = document.getElementById(`observationRow-${obsTime}`);
+      if (row) {
+        row.remove();
+      }
+    } else {
+      const data = await res.json();
+      alert(data.error || "Failed to delete observation");
     }
+  } catch (error) {
+    alert("An error occurred while deleting the observation");
   }
+}
 
   // Convert all UTC timestamps to local browser time with 24hr format + seconds
   document.querySelectorAll('.timestamp').forEach(el => {

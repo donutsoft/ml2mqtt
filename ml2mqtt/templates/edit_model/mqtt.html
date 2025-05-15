@@ -26,6 +26,14 @@
   </div>
 </div>
 
+<!-- Recent MQTT Messages Section -->
+<div class="statCard" style="margin-top: 1.5rem;">
+  <h3>Recent MQTT Messages</h3>
+  <div id="mqttMessages" class="readonlyDisplay" style="height: 150px; overflow-y: auto;">
+    Loading messages...
+  </div>
+</div>
+
 <!-- Toast Notification -->
 <div id="toast" class="toast">Settings saved successfully</div>
 
@@ -39,22 +47,31 @@
   document.getElementById("mqttTopic").addEventListener("input", updateDerivedTopics);
 
   async function submitMqttSettings() {
-    const mqttTopic = document.getElementById("mqttTopic").value.trim();
+  const mqttTopic = document.getElementById("mqttTopic").value.trim();
 
-    const res = await fetch(`/api/model/{{ model.name }}/mqtt`, {
-      method: "POST",
+  const updateMqttUrl = "{{ url_for('model.set_mqtt_base_topic', modelName=model.name) }}";
+
+  try {
+    const res = await fetch(updateMqttUrl, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ mqttTopic })
     });
 
+    const result = await res.json();
+
     if (res.ok) {
       showToast("Settings saved successfully");
     } else {
-      showToast("Failed to save settings", true);
+      showToast(result.error || "Failed to save settings", true);
     }
+  } catch (error) {
+    console.error("Error updating MQTT topic:", error);
+    showToast("Error updating MQTT topic", true);
   }
+}
 
   function showToast(message, isError = false) {
     const toast = document.getElementById("toast");
@@ -66,24 +83,46 @@
       toast.classList.remove("show");
     }, 2500);
   }
+
+  async function fetchMqttMessages() {
+    try {
+      const response = await fetch("{{ url_for('model.render_mqtt', modelName=model.name) }}");
+      const messages = await response.json();
+      const messageContainer = document.getElementById("mqttMessages");
+      messageContainer.innerHTML = messages.map(msg => {
+  try {
+    const parsed = JSON.parse(msg);
+    return `<div><pre>${JSON.stringify(parsed, null, 2)}</pre></div>`;
+  } catch (e) {
+    return `<div>${msg}</div>`;
+  }
+}).join("<br><br>");
+    } catch (error) {
+      console.error("Error fetching MQTT messages:", error);
+    }
+  }
+
+  // Initial fetch
+  fetchMqttMessages();
 </script>
 
 <style>
   .readonlyField {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
 
   .statCard label {
-  color: #cdd9e5;
-  margin-bottom: 6px;
-  margin-top: 1rem;
-  display: block;
-}
+    color: #cdd9e5;
+    margin-bottom: 6px;
+    margin-top: 1rem;
+    display: block;
+  }
 
-.statCard label:first-of-type {
-  margin-top: 0;
-}
+  .statCard label:first-of-type {
+    margin-top: 0;
+  }
+
   .sharedInputStyle {
     width: 100%;
     box-sizing: border-box;
@@ -93,15 +132,6 @@
     border: 1px solid #333;
     background-color: #1f2d3a;
     color: white;
-  }
-  .darkInput {
-    background-color: #1f2d3a;
-    color: white;
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 6px;
-    width: 100%;
-    font-size: 1rem;
   }
 
   .readonlyDisplay {

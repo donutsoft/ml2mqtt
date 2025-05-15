@@ -76,9 +76,9 @@ class KNNClassifier:
             self.logger.info(f"Not enough data to train the model: {e}")
             self._modelTrained = False
 
-    def predictLabel(self, sensorValues: Dict[str, Any]) -> Optional[str]:
+    def predictLabel(self, sensorValues: Dict[str, Any]) -> tuple[Optional[str], int]:
         if not self._pipeline or not self._modelTrained:
-            return None
+            return None, 0
 
         X = pd.DataFrame([sensorValues])
         X = X.reindex(columns=self._X_test.columns, fill_value=None)
@@ -93,7 +93,7 @@ class KNNClassifier:
             return label, confidence
         except Exception as e:
             self.logger.error(f"Prediction failed: {e}")
-            return None
+            return None, 0
 
     def getFeatureImportance(self) -> Optional[Dict[str, float]]:
         self.logger.info("KNN does not provide feature importances.")

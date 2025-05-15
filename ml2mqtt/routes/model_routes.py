@@ -235,15 +235,6 @@ def init_model_routes(model_manager: ModelManager):
         model_manager.getModel(modelName).optimizeParameters()
         return json.dumps({"success": True})
 
-    @model_bp.route("/api/model/<int:modelId>/observation/<int:observationId>/explicit", methods=["POST"])
-    def updateExplicitMatch(modelId: int, observationId: int) -> str:
-        data = request.get_json()
-        if data is None:
-            abort(400, "Missing or invalid JSON payload")
-
-        isExplicit = data.get("explicitMatch", False)
-        return json.dumps({"success": True})
-
     @model_bp.route("/api/model/<string:modelName>/observation/<float:observationTime>/delete", methods=["POST"])
     def apiDeleteObservation(modelName: str, observationTime: float) -> str:
         try:
@@ -438,4 +429,30 @@ def init_model_routes(model_manager: ModelManager):
         except TemplateNotFound:
             return jsonify({"error": "Template not found"}), 404
 
+    @model_bp.route("/mqtt_history/<string:modelName>", methods=["GET"])
+    def render_mqtt(modelName: str) -> Response:
+        return jsonify(model_manager.getModel(modelName).getRecentMqtt())
+    
+    @model_bp.route("/mqtt_topic/<string:modelName>", methods=["PUT"])
+    def set_mqtt_base_topic(modelName: str) -> Response:
+        try:
+            data = request.get_json()
+            if not data or "mqttTopic" not in data:
+                return jsonify({"error": "mqttTopic parameter is required"}), 400
+
+            mqttTopic = data["mqttTopic"]
+
+            # Update the model's MQTT topic
+            model = model_manager.getModel(modelName)
+            if not model:
+                return jsonify({"error": f"Model '{modelName}' not found"}), 404
+
+            model.setMqttTopic(mqttTopic)
+
+            return jsonify({"success": True, "mqttTopic": mqttTopic})
+
+        except Exception as e:
+            logger.exception(f"Error setting MQTT topic for model '{modelName}': {e}")
+            return jsonify({"error": str(e)}), 500
+    
     return model_bp 

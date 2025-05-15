@@ -10,7 +10,7 @@ arch:
   - i386
 ingress: true
 ingress_port: 5000
-panel_icon: "mdi:web"
+panel_icon: "mdi:fish"
 panel_title: "ml2mqtt"
 options:
   mqtt-server: "core-mosquitto"

@@ -44,10 +44,14 @@ class MqttClient:
                 self.logger.error(f"Failed to reconnect to MQTT server: {e}")
 
     def onMessage(self, client, userdata, msg):
-        if msg.topic in self.topics:
-            for callback in self.topics[msg.topic]:
-                callback(msg.payload.decode('utf-8'))
-                    
+        try:
+            if msg.topic in self.topics:
+                for callback in self.topics[msg.topic]:
+                    callback(msg.payload.decode('utf-8'))
+        except Exception as e:
+            self.logger.exception("Unhandled exception")
+            raise
+    
     def subscribe(self, topic, callback):
         shouldSubscribe = False
         if not topic in self.topics:

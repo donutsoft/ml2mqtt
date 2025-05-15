@@ -136,7 +136,10 @@ class ModelStore:
         raise ValueError(f"Unsupported type: {variable}")
 
     def _getValue(self, entityKey: EntityKey, value: Any) -> Any:
-        return self._reverseStringTable[value] if entityKey.type == self.TYPE_STRING else value
+        if entityKey.type == self.TYPE_STRING:
+            return self._reverseStringTable[value] if value in self._reverseStringTable else None
+        else:
+            return value
 
     def _generateFormatString(self, size: int = -1) -> str:
         formatStr = ""
@@ -202,6 +205,7 @@ class ModelStore:
                 entity.name: self._getValue(entity, unpacked[i] if i < len(unpacked) else None)
                 for i, entity in enumerate(self._entityKeys)
             }
+            sensorValues = {k: v for k, v in sensorValues.items() if v is not None}
             observations.append(ModelObservation(timeVal, label, sensorValues))
         return observations
 

@@ -86,11 +86,13 @@ class RandomForest:
             self._modelTrained = True
         except ValueError as e:
             self.logger.info(f"Not enough data to train the model: {e}")
+            nan_columns = X.columns[X.isna().any()].tolist()
+            self.logger.error(f"Columns with NaNs: {nan_columns}")
             self._modelTrained = False
 
-    def predictLabel(self, sensorValues: Dict[str, Any]) -> Optional[str]:
+    def predictLabel(self, sensorValues: Dict[str, Any]) -> tuple[Optional[str], int]:
         if not self._pipeline or not self._modelTrained:
-            return None
+            return None, 0
 
         X = pd.DataFrame([sensorValues])
         X = X.reindex(columns=self._X_test.columns, fill_value=None)
@@ -103,7 +105,7 @@ class RandomForest:
             return label, confidence
         except Exception as e:
             self.logger.error(f"Prediction failed: {e}")
-            return None
+            return None, 0
 
     def getFeatureImportance(self) -> Optional[Dict[str, float]]:
         if not self._modelTrained or self._pipeline is None:

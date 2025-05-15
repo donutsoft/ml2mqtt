@@ -17,12 +17,13 @@
         <td style="padding: 0.75rem;">{{ entity.name }}</td>
         <td style="padding: 0.75rem;">{{ entity.display_type }}</td>
         <td style="padding: 0.75rem;">{{ entity.significance | round(4) }}</td>
-        <td style="text-align: center;">
+        <!-- Temporarily disabled as this can break models if an entity is deleted and added back again. Will likely change this to a enabled/disabled state instead -->
+        <!--<td style="text-align: center;">
           <button onclick="deleteEntity('{{ model.name }}', '{{ entity.name }}')"
                   style="background-color: transparent; border: none; color: #ff4d4d; cursor: pointer;">
             Delete
           </button>
-        </td>
+        </td>-->
       </tr>
       {% endfor %}
     </tbody>
@@ -38,7 +39,12 @@
     }
 
     try {
-      const response = await fetch(`/api/model/${modelName}/entity/${entityName}/delete`, {
+      const urlTemplate = "{{ url_for('model.deleteEntity', modelName='MODEL_NAME', entityName='ENTITY_NAME') }}";
+    const deleteUrl = urlTemplate
+      .replace('MODEL_NAME', encodeURIComponent(modelName))
+      .replace('ENTITY_NAME', encodeURIComponent(entityName));
+
+      const response = await fetch(deleteUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
