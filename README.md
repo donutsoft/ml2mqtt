@@ -73,7 +73,6 @@ If no data is appearing, ensure that your sensors are actively sending data. You
 - Walk around your home and label each room. Select the correct room label on the training selector, and let ML2MQTT record observations. When you're about to change rooms, select disabled first and only start training once you're in the new room to avoid conflicting labels.
 
 ![Home Assistant Dashboard](images/homeassistant-training.png)
-![Home Assistant Dashboard](images/homeassistant-training-2.png)
 
 Once you’ve collected around 1000 observations, you can switch the learning mode from **Eager Learning** to **Lazy Learning**. Lazy Learning will only learn from new observations where the model’s prediction was incorrect, helping to preserve disk space and memory.
 
