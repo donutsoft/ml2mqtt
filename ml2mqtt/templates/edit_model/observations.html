@@ -58,6 +58,18 @@
       {% endfor %}
     </tbody>
   </table>
+  <div style="margin-top: 2rem; text-align: center;">
+    {% if model.totalPages > 1 %}
+      {% for page in range(1, model.totalPages + 1) %}
+        {% if page == model.currentPage %}
+          <span style="margin: 0 6px; font-weight: bold; color: #fff;">{{ page }}</span>
+        {% else %}
+          <a href="{{ url_for('model.editModel', modelName=model.name, page=page, section='observations') }}"
+             style="margin: 0 6px; color: #66b2ff;">{{ page }}</a>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  </div>
 {% else %}
   <p style="margin-top: 2rem;">No observations found for this model.</p>
 {% endif %}

@@ -154,7 +154,14 @@ class ModelService:
 
         if label != DISABLED_LABEL:
             learningType = self.getLearningType()
-            if learningType == "EAGER" or (learningType == "LAZY" and self._model.predictLabel(entityValues) != label):
+            if learningType == "LAZY":
+                prediction, _ = self._model.predictLabel(entityValues)
+                if prediction != label:
+                    entityValues = self._modelstore.sortEntityValues(entityMap, True)
+                    self._logger.info("Adding training observation for label: %s", label)
+                    self._modelstore.addObservation(label, entityValues)
+                    self._populateModel()
+            elif learningType == "EAGER":
                 entityValues = self._modelstore.sortEntityValues(entityMap, True)
                 self._logger.info("Adding training observation for label: %s", label)
                 self._modelstore.addObservation(label, entityValues)
