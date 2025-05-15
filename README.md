@@ -10,7 +10,7 @@ Traditional programming relies on fixed sets of rules, which can make it difficu
 
 For example, in the [Bermuda project](https://github.com/agittins/bermuda), the system determines the location of a phone based on Bluetooth signal strength from multiple sensors. Using a traditional logic-based setup, it simply picks the sensor with the strongest signal to determine the location of a phone. Machine learning can assess all sensor data at once, identifying more nuanced patterns and providing more accurate predictions. 
 
-With ML2MQTT, you can go even further by defining additional zones that weren’t initially possible in Bermuda’s logic-based system.
+With ML2MQTT, you can go even further by defining additional zones that weren’t initially possible in Bermuda’s logic-based system, and combine it with other sensors such as lights being switched on or off, or power consumption from an Emporia Vue.
 
 ### How Does It Work?
 
@@ -100,6 +100,7 @@ Coming soon:
 
 Coming soon:
 - **Reinforcement learner:** If a series of results look like [Room1, Room1, Room2, Room1, Room1], the model will automatically learn that Room2 should have been Room1.
+- **Explicit match:** If source sensors equal some set of values, ignore what the ML model predicts and provide an explicit label.
 
 ### Troubleshooting Tips
 - Ensure that your sensors are consistently sending data to MQTT. The NodeRed debug node can help with this.
