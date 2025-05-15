@@ -185,7 +185,7 @@ class ModelStore:
         for sensor in sensors:
             if sensor not in self._entityKeySet:
                 self._addSensorType(sensor, sensors[sensor])
-
+        self.logger.info(f"Observation to be added: {sensors}")
         formatStr = self._generateFormatString()
         values = [self._getDbValue(sensors.get(entity.name)) for entity in self._entityKeys]
         packed = struct.pack(formatStr, *values)
