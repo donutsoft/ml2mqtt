@@ -246,7 +246,6 @@ def init_model_routes(model_manager: ModelManager):
     @model_bp.route("/api/model/<string:modelName>/observations/delete", methods=["POST"])
     def apiDeleteObservations(modelName: str) -> str:
         try:
-            logger.error("got here")
             data = request.get_json()
             scope = data.get("scope")
 

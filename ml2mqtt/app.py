@@ -18,7 +18,11 @@ streamHandler.setLevel(logging.INFO)
 class ExcludeEndpointFilter(logging.Filter):
     def filter(self, record):
         # Exclude logs that contain specific endpoint
-        return "/logs/raw" not in record.getMessage()
+        excludedEndpoints = ['/logs/raw', '/syles/', '/images/']
+        for endpoint in excludedEndpoints:
+            if endpoint in record.getMessage():
+                return False
+        return True
 
 class UTCFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):

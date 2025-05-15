@@ -172,9 +172,7 @@ class ModelStore:
             remaining.discard(entity.name)
 
         if forTraining:
-            self.logger.error(f"{remaining}")
             for key in remaining:
-                self.logger.error(f"{key} = {entityMap[key]}")
                 self._addSensorType(key, entityMap[key])
                 values[key] = entityMap[key]
 
@@ -216,9 +214,9 @@ class ModelStore:
         return Path(self.modelPath).stat().st_size
 
     def _getSetting(self, name: str, default_value: Any) -> Any:
-        self._cursor.execute("SELECT value FROM Settings WHERE name = ?", (name,))
-        row = self._cursor.fetchone()
-        return row[0] if row else default_value
+        with self._db as conn:
+            row = conn.execute("SELECT value FROM Settings WHERE name = ?", (name,)).fetchone()
+            return row[0] if row else default_value
 
     def getDict(self, name: str) -> Optional[Dict[str, Any]]:
         return json.loads(self._getSetting(name, "{}"))

@@ -150,7 +150,7 @@ class ModelService:
             self._logger.debug("No entity values to process.")
             return        
 
-        entityValues = self._modelstore.sortEntityValues(entityMap, False)
+        entityValues = {k: v for k, v in entityValues.items() if v is not None}
 
         if label != DISABLED_LABEL:
             learningType = self.getLearningType()
@@ -331,20 +331,20 @@ class ModelService:
     def reorderPreprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder preprocessors."""
         if 0 <= from_index < len(self._preprocessors) and 0 <= to_index < len(self._preprocessors):
-            self._logger.error("Previous preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
+            self._logger.info("Previous preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
             preprocessor = self._preprocessors.pop(from_index)
             self._preprocessors.insert(to_index, preprocessor)
-            self._logger.error("Reordering preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
+            self._logger.info("Reordering preprocessors: %s", list(map(lambda p: p, self._preprocessors)))
             self._modelstore.reorderPreprocessors(map(lambda p: p.dbId, self._preprocessors))
             self.deleteObservationsSince(0)
 
     def reorderPostprocessors(self, from_index: int, to_index: int) -> None:
         """Reorder postprocessors."""
         if 0 <= from_index < len(self._postprocessors) and 0 <= to_index < len(self._postprocessors):
-            self._logger.error("Previous postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
+            self._logger.info("Previous postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
             postprocessor = self._postprocessors.pop(from_index)
             self._postprocessors.insert(to_index, postprocessor)
-            self._logger.error("Reordering postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
+            self._logger.info("Reordering postprocessors: %s", list(map(lambda p: p, self._postprocessors)))
             self._modelstore.reorderPostprocessors(map(lambda p: p.dbId, self._postprocessors))
 
     def getLearningType(self):
@@ -373,7 +373,6 @@ class ModelService:
     
     def getModelConfig(self, key, default):
         config = self._modelstore.getDict("config")
-        self._logger.error(f"Get model config {config}")
         if key in config:
             return config[key]
         else:
