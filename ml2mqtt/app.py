@@ -49,8 +49,6 @@ logger.addHandler(streamHandler)
 for handler in logging.getLogger().handlers:
     handler.addFilter(ExcludeEndpointFilter())
 
-# Create models directory if it doesn't exist
-os.makedirs("models", exist_ok=True)
 
 app = Flask(__name__, static_url_path='')
 app.wsgi_app = IngressMiddleware(app.wsgi_app)
@@ -72,8 +70,9 @@ def inject_globals():
     )
 # Initialize configuration and services
 config = Config()
+
 mqttClient = MqttClient(config.getValue("mqtt"))
-modelManager = ModelManager(mqttClient)
+modelManager = ModelManager(mqttClient, config.getDataPath() + "/models")
 
 # Register blueprints
 app.register_blueprint(init_model_routes(modelManager))

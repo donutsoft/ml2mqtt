@@ -6,9 +6,10 @@ class Config:
     def __init__(self):
         options_path = Path("/data/options.json")
         settings_path = Path("settings.json")
-        
+        self._isHomeAssistant = False
         self.config = {}
         if options_path.exists():
+            self._isHomeAssistant = True
             with open(options_path, "r") as file:
                 options = json.load(file)
                 self.config = {
@@ -30,3 +31,13 @@ class Config:
             return self.config.get(keyName, {})
         else:
             return self.config.get(keyName, {}).get(valueName)
+        
+    def isHomeAssistant(self):
+        return self._isHomeAssistant
+    
+    def getDataPath(self):
+        if self._isHomeAssistant:
+            return "/data"
+        else:
+            return "."
+

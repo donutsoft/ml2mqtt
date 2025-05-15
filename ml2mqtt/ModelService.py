@@ -150,7 +150,7 @@ class ModelService:
             self._logger.debug("No entity values to process.")
             return        
 
-        entityValues = {k: v for k, v in entityValues.items() if v is not None}
+        entityValues = {k: v for k, v in entityMap.items() if v is not None}
 
         if label != DISABLED_LABEL:
             learningType = self.getLearningType()

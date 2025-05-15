@@ -6,7 +6,7 @@ from ModelStore import ModelStore
 
 
 class ModelManager:
-    def __init__(self, mqttClient: MqttClient, modelsDir: str = "models/"):
+    def __init__(self, mqttClient: MqttClient, modelsDir: str):
         self._mqttClient = mqttClient
         self._models: Dict[str, ModelService] = {}
         self._modelsDir: Path = Path(modelsDir)
