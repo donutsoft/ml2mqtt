@@ -46,6 +46,7 @@ class RandomForest:
         self._y_test: Optional[np.ndarray] = None
         self._modelTrained: bool = False
         self._categoricalCols: List[str] = []
+        self._ordinalEncoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
 
     def populateDataframe(self, observations: List[ModelObservation]) -> None:
         data: List[Dict[str, Any]] = []
@@ -68,7 +69,7 @@ class RandomForest:
 
         preprocessor = ColumnTransformer(
             transformers=[
-                ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), self._categoricalCols),
+                ('cat', self._ordinalEncoder, self._categoricalCols),
                 ('num', 'passthrough', numericalCols)
             ]
         )
@@ -180,7 +181,7 @@ class RandomForest:
 
         preprocessor = ColumnTransformer(
             transformers=[
-                ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), self._categoricalCols),
+                ('cat', self._ordinalEncoder, self._categoricalCols),
                 ('num', 'passthrough', numericalCols)
             ]
         )

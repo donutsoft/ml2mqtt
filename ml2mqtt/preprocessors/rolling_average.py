@@ -38,7 +38,7 @@ class RollingAverage(BasePreprocessor):
             if len(filteredData) == 0:
                 result[entity] = None
             else:
-                result[entity] = round(sum(filteredData) / len(filteredData), 4)
+                result[entity] = round(sum(filteredData) / len(rollingData), 4)
 
         return result
     
