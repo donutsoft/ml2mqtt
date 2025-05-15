@@ -195,7 +195,7 @@ class ModelStore:
                 self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (assignedTime, label, packed))
                 self._db.commit()
         except Exception as e:
-            self.logger.error()
+            self.logger.exception("Exception while adding observation")
 
     def getObservations(self) -> List[ModelObservation]:
         self._cursor.execute("SELECT time, label, data FROM Observations ORDER BY time DESC")
