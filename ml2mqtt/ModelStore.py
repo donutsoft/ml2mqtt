@@ -157,10 +157,11 @@ class ModelStore:
             try:
                 self._db.execute("INSERT INTO SensorKeys (name, type) VALUES (?, ?)", (name, sensorType))
                 self._db.commit()
-                self._entityKeys.append(EntityKey(name, sensorType))
-                self._entityKeySet.add(name)
             except sqlite3.IntegrityError:
                 pass
+        if not name in self._entityKeySet:
+            self._entityKeys.append(EntityKey(name, sensorType))
+            self._entityKeySet.add(name)
 
     def sortEntityValues(self, entityMap: Dict[str, Any], forTraining: bool) -> Dict[str, Any]:
         values: Dict[str, Any] = {}
