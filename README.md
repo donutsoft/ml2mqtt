@@ -100,6 +100,7 @@ Coming soon:
 
 Coming soon:
 - **Reinforcement learner:** If a series of results look like [Room1, Room1, Room2, Room1, Room1], the model will automatically learn that Room2 should have been Room1.
+- **Explicit match:** If source sensors equal some set of values, ignore what the ML model predicts and provide an explicit label.
 
 ### Troubleshooting Tips
 - Ensure that your sensors are consistently sending data to MQTT. The NodeRed debug node can help with this.
