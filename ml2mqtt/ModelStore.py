@@ -187,12 +187,15 @@ class ModelStore:
                 self._addSensorType(sensor, sensors[sensor])
         self.logger.info(f"Observation to be added: {sensors}")
         formatStr = self._generateFormatString()
-        values = [self._getDbValue(sensors.get(entity.name)) for entity in self._entityKeys]
-        packed = struct.pack(formatStr, *values)
+        try:
+            values = [self._getDbValue(sensors.get(entity.name)) for entity in self._entityKeys]
+            packed = struct.pack(formatStr, *values)
 
-        with self.lock, self._db:
-            self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (assignedTime, label, packed))
-            self._db.commit()
+            with self.lock, self._db:
+                self._db.execute("INSERT INTO Observations (time, label, data) VALUES (?, ?, ?)", (assignedTime, label, packed))
+                self._db.commit()
+        except Exception as e:
+            self.logger.error()
 
     def getObservations(self) -> List[ModelObservation]:
         self._cursor.execute("SELECT time, label, data FROM Observations ORDER BY time DESC")
