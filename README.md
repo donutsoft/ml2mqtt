@@ -24,7 +24,7 @@ Let’s walk through a simple example to illustrate how ML2MQTT works.
 - Click **Add Model** and enter a name for your model (e.g., "Room Presence") and labels for each room.
 - Specify the number of input sensors. This can be adjusted later.
 
-![images/create-model.png](#)
+![Create model image](images/create-model.png)
 
 **Step 2: Configure Node-RED**
 - Click **Edit** and go to Node-RED. A new flow will be generated for you.
@@ -32,7 +32,7 @@ Let’s walk through a simple example to illustrate how ML2MQTT works.
 
 Initially, the nodes will look like a jumbled mess. Reorganize them so they are more structured, as shown below:
 
-![images/nodes.png](#)
+![Node Red configuration image](images/nodes.png)
 
 Before proceeding, it’s important to understand how these nodes work:
 - The "ADD ALL SOURCE ENTITIES HERE" node will trigger every time a sensor value changes.
@@ -41,13 +41,13 @@ Before proceeding, it’s important to understand how these nodes work:
 
 In the example below, we’ve added two sensor entities to the "ADD ALL SOURCE ENTITIES HERE" node:
 
-![images/configure-multiple-entities.png](#)
+![Configure multiple entities](images/configure-multiple-entities.png)
 
 **Step 3: Configure MQTT in ML2MQTT**
 - Go back to ML2MQTT and open the MQTT section.
 - Verify that messages are being received. The screen does not auto-refresh, so you may need to click the refresh button a few times.
 
-![images/mqtt-config.png](#)
+![MQTT configuration](images/mqtt-config.png)
 
 If no data is appearing, ensure that your sensors are actively sending data. You can also check the Logs panel for any error messages.
 
@@ -55,14 +55,14 @@ If no data is appearing, ensure that your sensors are actively sending data. You
 - Go to the Home Assistant dashboard and add the source entities, the trainer selector, and the prediction sensor.
 - Walk around your home and label each room. Select the correct room label on the training selector, and let ML2MQTT record observations.
 
-![images/homeassistant-training.png](#)
+![Home Assistant Dashboard](images/homeassistant-training.png)
 
 Once you’ve collected around 1000 observations, you can switch the learning mode from **Eager Learning** to **Lazy Learning**. Lazy Learning will only learn from new observations where the model’s prediction was incorrect, helping to prevent overfitting.
 
 **Step 5: Fine-Tuning Your Model**
 - Open the model view and click **Automatically tune model**. This will initiate a tuning process to optimize the model based on your training data.
 
-![images/model.png](#)
+![Model View configuration page](images/model.png)
 
 ### Preprocessors and Post Processors
 
