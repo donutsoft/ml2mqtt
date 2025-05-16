@@ -1,6 +1,6 @@
 name: "ml2mqtt"
 description: "Machine learning for MQTT"
-version: "1.2.23"
+version: "1.2.24"
 slug: "ml2mqtt"
 arch:
   - aarch64

@@ -155,8 +155,8 @@ class ModelService:
         if label != DISABLED_LABEL:
             learningType = self.getLearningType()
             if learningType == "LAZY":
-                prediction, _ = self._model.predictLabel(entityValues)
-                if prediction != label:
+                prediction, confidence = self._model.predictLabel(entityValues)
+                if prediction != label or confidence < 0.8:
                     entityValues = self._modelstore.sortEntityValues(entityMap, True)
                     self._logger.info("Adding training observation for label: %s", label)
                     self._modelstore.addObservation(label, entityValues)
