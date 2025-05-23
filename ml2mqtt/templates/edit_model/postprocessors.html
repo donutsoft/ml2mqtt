@@ -165,6 +165,8 @@
   const addPostprocessorUrl = "{{ url_for('model.addPostprocessor', modelName=model.name) }}";
   const deletePostprocessorUrl = "{{ url_for('model.deletePostprocessor', modelName=model.name) }}";
   const reorderPostprocessorsUrl = "{{ url_for('model.reorderPostprocessors', modelName=model.name) }}";
+  const renderPostprocessorUrlPlaceholder = "{{ url_for('model.render_postprocessor', postprocessor_type='__PLACEHOLDER__') }}";
+  let appendedPostprocessorScripts = []; // For managing dynamic scripts
 
   function togglePostprocessorModal() {
     const modal = document.getElementById("postprocessorModal");
@@ -190,7 +192,7 @@
     const paramsContainer = document.getElementById("postParamsContainer");
     const descriptionContainer = document.getElementById("postDescription");
 
-    paramsContainer.innerHTML = "";
+    paramsContainer.innerHTML = ""; // Clear previous content
     descriptionContainer.classList.remove("visible");
 
     const selectedProcessor = availablePostprocessors.find(p => p.type === type);
@@ -199,49 +201,66 @@
     descriptionContainer.textContent = selectedProcessor.description || "";
     setTimeout(() => descriptionContainer.classList.add("visible"), 10);
 
-    const properties = selectedProcessor.config_schema?.properties || {};
+    // Fetch and render HTML template
+    const url = renderPostprocessorUrlPlaceholder.replace("__PLACEHOLDER__", type);
 
-    if (Object.keys(properties).length === 0) {
-      paramsContainer.style.display = "none";
-      return;
-    } else {
-      paramsContainer.style.display = "block";
-    }
+    fetch(url, {
+        method: "POST", // Match the route's method
+        headers: {
+            "Content-Type": "application/json"
+            // If you need to send a body, like preprocessors do for 'sensors':
+            // body: JSON.stringify({ /* any data needed by postprocessor templates */ })
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Clean up previously appended scripts
+        if (appendedPostprocessorScripts.length > 0) {
+            for(const script of appendedPostprocessorScripts) {
+                document.body.removeChild(script);
+            }
+            appendedPostprocessorScripts = [];
+        }
 
-    for (const [paramName, paramConfig] of Object.entries(properties)) {
-      const fieldDiv = document.createElement("div");
-      fieldDiv.className = "formField";
+        paramsContainer.innerHTML = html;
+        paramsContainer.style.display = "block"; // Ensure it's visible
 
-      const label = document.createElement("label");
-      label.textContent = paramConfig.description || paramName;
-      label.htmlFor = `postParam_${paramName}`;
-
-      const input = document.createElement("input");
-      input.type = paramConfig.type === "integer" ? "number" : "text";
-      input.id = `postParam_${paramName}`;
-      input.value = paramConfig.default || "";
-
-      fieldDiv.appendChild(label);
-      fieldDiv.appendChild(input);
-      paramsContainer.appendChild(fieldDiv);
-    }
+        // Find and execute script tags within the loaded HTML
+        const scripts = paramsContainer.querySelectorAll("script");
+        scripts.forEach(script => {
+            const newScript = document.createElement("script");
+            newScript.textContent = script.textContent;
+            document.body.appendChild(newScript);
+            appendedPostprocessorScripts.push(newScript);
+        });
+    })
+    .catch(err => {
+        console.error("Error loading postprocessor template:", err);
+        paramsContainer.innerHTML = "<p>Error loading configuration.</p>";
+        paramsContainer.style.display = "block";
+    });
   }
 
   function submitPostprocessor() {
     const type = document.getElementById("postType").value;
-    const selectedProcessor = availablePostprocessors.find(p => p.type === type);
-    if (!selectedProcessor) return;
+    // const selectedProcessor = availablePostprocessors.find(p => p.type === type); // Not strictly needed anymore for param collection
+    // if (!selectedProcessor) return;
 
     const params = {};
-    const properties = selectedProcessor.config_schema?.properties || {};
+    const paramsContainer = document.getElementById("postParamsContainer");
+    const inputs = paramsContainer.querySelectorAll("input, select, textarea"); // Add other types if necessary
 
-    for (const paramName of Object.keys(properties)) {
-      const input = document.getElementById(`postParam_${paramName}`);
-      if (input) {
-        const value = input.type === "number" ? parseInt(input.value) : input.value;
-        params[paramName] = value;
-      }
-    }
+    inputs.forEach(input => {
+        // Handle checkboxes if you add them
+        // if (input.type === "checkbox") {
+        //     params[input.name] = input.checked;
+        // } else 
+        if (input.type === "number") {
+            params[input.name] = parseFloat(input.value);
+        } else {
+            params[input.name] = input.value;
+        }
+    });
 
     const payload = { type, params };
 
@@ -251,7 +270,10 @@
       body: JSON.stringify(payload)
     }).then(res => {
       if (res.ok) window.location.reload();
-      else showToast("Error adding postprocessor", true);
+      else showToast("Error adding postprocessor", true); // Ensure showToast is defined or handle error appropriately
+    }).catch(err => {
+        console.error("Error submitting postprocessor:", err);
+        // showToast might not be available, consider simple alert or console log
     });
   }
 

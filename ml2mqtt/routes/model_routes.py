@@ -428,6 +428,18 @@ def init_model_routes(model_manager: ModelManager):
         except TemplateNotFound:
             return jsonify({"error": "Template not found"}), 404
 
+    @model_bp.route("/render_postprocessor/<string:postprocessor_type>", methods=["POST"])
+    def render_postprocessor(postprocessor_type):
+        # In the future, we might want to pass data to the template,
+        # similar to how 'sensors' are passed to preprocessor templates.
+        # For now, an empty context is sufficient.
+        # data = request.get_json()
+        # context = data.get("context", {}) 
+        try:
+            return render_template(f"postprocessors/{postprocessor_type}.html") #, **context)
+        except TemplateNotFound:
+            return jsonify({"error": "Template not found"}), 404
+
     @model_bp.route("/mqtt_history/<string:modelName>", methods=["GET"])
     def render_mqtt(modelName: str) -> Response:
         return jsonify(model_manager.getModel(modelName).getRecentMqtt())
