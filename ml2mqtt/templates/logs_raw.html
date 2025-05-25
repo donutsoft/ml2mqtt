@@ -1,1 +1,1 @@
-{{ logs | join('\n') }}
+{{ logs | map('safe') | join('\n') }}
