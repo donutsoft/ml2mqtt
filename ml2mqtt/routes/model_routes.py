@@ -13,6 +13,10 @@ from preprocessors.PreprocessorFactory import PreprocessorFactory
 from ModelManager import ModelManager
 from PreprocessorEvaluator import PreprocessorEvaluator
 from datetime import timedelta, datetime
+import os
+import tempfile
+import sqlite3
+import shutil # For cleaning up temp_dir
 
 logger = logging.getLogger("ml2mqtt.routes.model")
 model_bp = Blueprint('model', __name__)
@@ -465,5 +469,132 @@ def init_model_routes(model_manager: ModelManager):
         except Exception as e:
             logger.exception(f"Error setting MQTT topic for model '{modelName}': {e}")
             return jsonify({"error": str(e)}), 500
+
+    @model_bp.route("/upload-database", methods=["GET", "POST"])
+    def uploadDatabase() -> Response: # Return type is Response for redirects or rendered templates
+        if request.method == "GET":
+            return render_template("upload_database.html", title="Upload Database", active_page="upload_database")
+
+        # POST request handling
+        temp_dir = None # Initialize for cleanup
+        try:
+            # --- File Handling ---
+            db_file = request.files.get("database_file")
+            if not db_file or not db_file.filename:
+                # Consider using flash messages for better UX with redirects
+                return render_template("upload_database.html", title="Upload Database", active_page="upload_database", error="No database file selected."), 400
+
+            temp_dir = tempfile.mkdtemp()
+            # Sanitize filename before joining to prevent directory traversal issues, though mkdtemp helps
+            safe_filename = slugify(os.path.splitext(db_file.filename)[0]) + os.path.splitext(db_file.filename)[1]
+            if not safe_filename: # if filename was all special chars
+                safe_filename = "uploaded.db"
+            temp_db_path = os.path.join(temp_dir, safe_filename)
+            db_file.save(temp_db_path)
+
+            # --- User Inputs ---
+            model_name_input = request.form.get("model_name", "").strip()
+            mqtt_topic_input = request.form.get("mqtt_topic", "").strip()
+            entity_names_input_str = request.form.get("entity_names", "").strip()
+
+            user_provided_entity_names = []
+            if entity_names_input_str:
+                user_provided_entity_names = [name.strip() for name in entity_names_input_str.splitlines() if name.strip()]
+
+            # --- Determine Model Name ---
+            # Default name from filename (before slugification for display)
+            model_name_default_display = os.path.splitext(db_file.filename)[0].replace('_', ' ').replace('-', ' ')
+
+            display_model_name = model_name_input or model_name_default_display
+            # Slug is used as the key for the model_manager and in URLs
+            model_slug = slugify(model_name_input or os.path.splitext(safe_filename)[0])
+
+
+            if not model_slug: # if display_model_name was empty or only special chars
+                 return render_template("upload_database.html", title="Upload Database", active_page="upload_database", error="Invalid model name derived. Please provide a valid name."), 400
+
+            if model_manager.modelExists(model_slug):
+                # It's important to clean up the temp_dir if we error out here
+                if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+                return render_template("upload_database.html", title="Upload Database", active_page="upload_database", error=f"Model with name '{model_slug}' already exists."), 400
+
+            # --- Database Interaction (Extract defaults from the uploaded, temporary DB) ---
+            default_entity_names_from_db = []
+            mqtt_path_from_db = ""
+            try:
+                conn = sqlite3.connect(temp_db_path)
+                cursor = conn.cursor()
+                # Get table names (entity names) - filter out sqlite internal tables
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+                default_entity_names_from_db = [table[0] for table in cursor.fetchall()]
+
+                # Get MQTT path from a hypothetical 'settings' table
+                try:
+                    cursor.execute("SELECT value FROM settings WHERE key='mqtt_path';")
+                    mqtt_path_row = cursor.fetchone()
+                    if mqtt_path_row and isinstance(mqtt_path_row[0], str):
+                        mqtt_path_from_db = mqtt_path_row[0].strip()
+                except sqlite3.OperationalError:
+                    logger.info(f"No 'settings' table or 'mqtt_path' key in uploaded DB {safe_filename}")
+                    pass # 'settings' table or 'mqtt_path' key might not exist
+                conn.close()
+            except sqlite3.Error as e:
+                logger.warning(f"Could not read table names/settings from uploaded DB {temp_db_path}: {e}. Proceeding with user inputs or defaults.")
+                # Do not fail here, allow model creation if user provides info or defaults are acceptable
+                # The copied DB might still be valid for ModelStore itself, even if we can't introspect it here.
+                pass
+
+            # --- Determine Final Entity Names and MQTT Topic ---
+            final_entity_names = user_provided_entity_names if user_provided_entity_names else default_entity_names_from_db
+            if not final_entity_names:
+                 logger.warning(f"No entity names provided by user or auto-detected for model {model_slug}. Model will be created without pre-defined entities unless ModelStore auto-detects them from data later.")
+
+            final_mqtt_topic = mqtt_topic_input if mqtt_topic_input else mqtt_path_from_db
+            if not final_mqtt_topic: # If still no topic (not in form, not in DB)
+                final_mqtt_topic = f"ml2mqtt/{model_slug}" # Generate default
+
+            # --- Model Creation (using new features) ---
+            # addModel copies the temp_db_path to the final model location
+            new_model = model_manager.addModel(model_slug, source_db_path=temp_db_path)
+            new_model.setName(display_model_name) # Set the human-readable name
+            new_model.setMqttTopic(final_mqtt_topic)
+
+            # Initialize the schema using the (potentially modified) entity names
+            # ModelStore.TYPE_FLOAT is the default type in initialize_schema_from_entity_names
+            if final_entity_names:
+                 new_model.store.initialize_schema_from_entity_names(final_entity_names)
+
+            # Set other default configurations (example from createModel)
+            # Consider what default value is appropriate for uploaded models
+            default_fallback_value = request.form.get("default_value", "9999.0") # Or some other default
+            new_model.addPreprocessor("type_caster", { 'sensor': [{"SELECT_ALL": True }]})
+            new_model.addPreprocessor("null_handler", { 'sensor': [{"SELECT_ALL": True }], 'replacementType': 'float', 'nullReplacement': float(default_fallback_value)})
+            new_model.addPostprocessor("only_diff", {})
+            new_model.setLearningType("EAGER") # Or perhaps "DISABLED" for uploaded models initially
+            new_model.subscribeToMqttTopics()
+
+            logger.info(f"Successfully created model '{display_model_name}' (slug: {model_slug}) from uploaded database '{safe_filename}'.")
+
+            # --- Cleanup: temp_dir is now handled in finally block ---
+
+            return redirect(url_for("model.editModel", modelName=model_slug, section="settings"))
+
+        except ValueError as e: # Catch model already exists from addModel, or other ValueErrors
+            logger.error(f"ValueError during database upload processing for {db_file.filename if db_file else 'unknown file'}: {e}", exc_info=True)
+            # It's important to clean up the temp_dir if we error out here
+            if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+            return render_template("upload_database.html", title="Upload Database", active_page="upload_database", error=str(e)), 400
+        except Exception as e:
+            logger.error(f"Unexpected exception during database upload for {db_file.filename if db_file else 'unknown file'}: {e}", exc_info=True)
+            if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+            return render_template("upload_database.html", title="Upload Database", active_page="upload_database", error="An unexpected error occurred processing the database."), 500
+        finally:
+            # --- Cleanup ---
+            if temp_dir and os.path.exists(temp_dir):
+                try:
+                    shutil.rmtree(temp_dir) # shutil.rmtree to remove the directory and its contents
+                    logger.info(f"Cleaned up temporary directory: {temp_dir}")
+                except Exception as e_clean:
+                    logger.error(f"Error cleaning up temp directory {temp_dir}: {e_clean}")
     
-    return model_bp 
+    return model_bp

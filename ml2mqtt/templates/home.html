@@ -10,6 +10,11 @@
 </div>
 {% endif %}
 
+<div class="actions-bar" style="margin-bottom: 1rem; text-align: right;">
+    <a href="{{ url_for('model.createModel') }}" class="btn btn-primary">Create New Model</a>
+    <a href="{{ url_for('model.uploadDatabase') }}" class="btn btn-secondary" style="margin-left: 0.5rem;">Import Model from DB</a>
+</div>
+
 {% if models %}
 <table class="table">
     <thead>
@@ -55,7 +60,9 @@
 
 {% else %}
   <p style="margin-top: 2rem; font-size: 1.1rem; color: #c0c8d6;">
-    🐬 You haven't added any models yet. <a href="{{ url_for('model.createModel') }}" class="link">Add one now</a>.
+    🐬 You haven't added any models yet.
+    <a href="{{ url_for('model.createModel') }}" class="link">Add one now</a> or
+    <a href="{{ url_for('model.uploadDatabase') }}" class="link">Import from Database</a>.
   </p>
 {% endif %}
 

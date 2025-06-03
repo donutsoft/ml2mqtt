@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Upload Database to Create Model</h2>
+<p>Upload a SQLite database file. The system will attempt to extract table names as entities and find an MQTT topic in a 'settings' table.</p>
+<p>You can review and modify the extracted values before finalizing the model creation (this review step will be part of a future update; for now, the model is created directly based on initial extraction and the fields below if provided).</p>
+
+<form method="POST" action="{{ url_for('model.uploadDatabase') }}" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="database_file">Database File (SQLite)</label>
+        <input type="file" id="database_file" name="database_file" accept=".db,.sqlite,.sqlite3" required>
+        <small>Upload your SQLite database file.</small>
+    </div>
+
+    <div class="form-group">
+        <label for="model_name">Model Name (Optional)</label>
+        <input type="text" id="model_name" name="model_name" placeholder="e.g., MyDatabaseModel">
+        <small>If left blank, a name will be generated from the filename. This will be the name of the model.</small>
+    </div>
+
+    <div class="form-group">
+        <label for="mqtt_topic">MQTT Topic (Optional)</label>
+        <input type="text" id="mqtt_topic" name="mqtt_topic" placeholder="e.g., ml2mqtt/mydatabasemodel">
+        <small>If left blank, and not found in DB, a topic will be auto-generated. This is the base topic the model will publish to.</small>
+    </div>
+
+    <div class="form-group">
+        <label for="entity_names">Entity Names (Optional, one per line)</label>
+        <textarea id="entity_names" name="entity_names" rows="5" placeholder="sensor_data_table1&#n;configuration_table&#n;another_entity"></textarea>
+        <small>These are typically table names from your database. If left blank, they will be auto-detected. You can adjust them here.</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Upload and Process Database</button>
+</form>
+
+<script>
+    // Future JavaScript can be added here to:
+    // 1. Preview selected filename.
+    // 2. Potentially make an AJAX request to a new endpoint after file selection
+    //    to pre-fill Model Name, MQTT Topic, and Entity Names based on DB introspection.
+    //    For now, these fields are manually entered or overridden by the backend if empty.
+
+    document.getElementById('database_file').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file && !document.getElementById('model_name').value) {
+            // Auto-fill model name if empty
+            let modelName = file.name.split('.')[0]; // Remove extension
+            modelName = modelName.replace(/[^a-zA-Z0-9_]/g, '_'); // Sanitize
+            document.getElementById('model_name').value = modelName;
+        }
+    });
+</script>
+
+{% endblock %}

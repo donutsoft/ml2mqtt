@@ -245,6 +245,25 @@ class ModelStore:
     def getName(self) -> Optional[str]:
         return self._getSetting("name", None)
 
+    def initialize_schema_from_entity_names(self, entity_names: List[str], default_type: int = TYPE_FLOAT) -> None:
+        """
+        Initializes or re-initializes the SensorKeys table from a list of entity names.
+        All existing SensorKeys will be cleared.
+        """
+        with self.lock, self._db:
+            # Clear existing SensorKeys
+            self._db.execute("DELETE FROM SensorKeys")
+
+            # Insert new entity names
+            for name in entity_names:
+                self._db.execute("INSERT INTO SensorKeys (name, type) VALUES (?, ?)", (name, default_type))
+
+            self._db.commit()
+
+        # Refresh internal sensor key caches
+        self._populateSensors()
+        self.logger.info(f"Initialized schema with {len(entity_names)} entities: {entity_names}")
+
     def getLabels(self) -> List[str]:
         return [row[0] for row in self._cursor.execute("SELECT DISTINCT label FROM Observations ORDER BY label ASC")]
 
