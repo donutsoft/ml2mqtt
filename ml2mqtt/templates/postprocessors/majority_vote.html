@@ -1,0 +1,9 @@
+{% extends "postprocessors/postprocessor_base.html" %}
+
+{% block content %}
+<div class="formField">
+  <label for="window_size">Window Size:</label>
+  <input type="number" id="window_size" name="window_size" value="{{ config.window_size | default(5) }}" min="1">
+  <small>Number of results to consider for majority voting (e.g., 5).</small>
+</div>
+{% endblock %}
