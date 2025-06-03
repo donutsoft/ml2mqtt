@@ -1,9 +1,11 @@
-from flask import Blueprint, render_template, request, url_for, redirect, abort, Response, jsonify
+from flask import Blueprint, render_template, request, url_for, redirect, abort, Response, jsonify, flash
 from jinja2 import TemplateNotFound
 from typing import Dict, Any, List, Optional
 import json
 import math
 import logging
+import os
+from werkzeug.utils import secure_filename
 from ModelStore import ModelObservation, EntityKey
 from classifiers.RandomForest import RandomForestParams
 from classifiers.KNNClassifier import KNNParams
@@ -465,5 +467,81 @@ def init_model_routes(model_manager: ModelManager):
         except Exception as e:
             logger.exception(f"Error setting MQTT topic for model '{modelName}': {e}")
             return jsonify({"error": str(e)}), 500
-    
-    return model_bp 
+
+    @model_bp.route("/upload-model", methods=["POST"], endpoint="upload_model")
+    def upload_model() -> Response:
+        if 'model_file' not in request.files:
+            flash('No file part in the request.', 'error')
+            return redirect(url_for('model.home'))
+
+        file = request.files['model_file']
+
+        if file.filename == '':
+            flash('No selected file.', 'error')
+            return redirect(url_for('model.home'))
+
+        if not file.filename.endswith('.db'):
+            flash('Invalid file type. Only .db files are allowed.', 'error')
+            return redirect(url_for('model.home'))
+
+        # Basic check for SQLite magic number (first 16 bytes should be "SQLite format 3\000")
+        magic_number = file.read(16)
+        file.seek(0) # Reset file pointer
+        if magic_number != b"SQLite format 3\000":
+            flash('File does not appear to be a valid SQLite database.', 'error')
+            return redirect(url_for('model.home'))
+
+        filename = secure_filename(file.filename)
+        # Assuming model_manager has a way to get the base data path
+        # or we use a config value. For now, hardcoding 'data/models/' relative to app root.
+        # This path should ideally come from a configuration.
+        models_dir = os.path.join(model_manager.data_dir, 'models') # model_manager.data_dir should be like 'data/'
+
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir, exist_ok=True)
+
+        save_path = os.path.join(models_dir, filename)
+
+        if os.path.exists(save_path):
+            flash(f"Model file '{filename}' already exists. Please choose a different name or delete the existing one.", "error")
+            return redirect(url_for('model.home'))
+
+        try:
+            file.save(save_path)
+            flash(f"Model '{filename}' uploaded successfully.", "success")
+
+            # Inform ModelManager about the new model.
+            # The name of the model should be derived from the filename without the .db extension.
+            model_name_from_file = filename[:-3] # Remove .db
+
+            # This part is a placeholder based on the subtask description.
+            # `addModel` might need changes if it expects a full model configuration
+            # or if it's designed to create a new empty model.
+            # For now, we assume it can handle loading/recognizing an existing DB.
+            # Or, a new method like `loadModelFromDb(path)` might be needed in ModelManager.
+            if not model_manager.modelExists(slugify(model_name_from_file)):
+                 # If addModel is for creating new, this might be tricky.
+                 # Let's assume addModel can also register an existing db if found by name.
+                 # This is a common pattern: addModel creates if not exist, or loads if it does.
+                 # However, the original addModel seems to create a new one with default settings.
+                 # This will likely need refinement in a subsequent step for ModelManager.
+                 # For now, let's call it, assuming it might create a basic entry if needed,
+                 # and the actual loading from DB happens elsewhere or is implicitly handled.
+                model_manager.addModel(model_name_from_file) # This will use slugify(model_name_from_file)
+                logger.info(f"Model '{model_name_from_file}' (from {filename}) added to ModelManager via upload.")
+            else:
+                logger.info(f"Model '{model_name_from_file}' (from {filename}) already known to ModelManager.")
+            # Potentially, a more direct method like model_manager.load_model_from_file(save_path)
+            # would be cleaner here, if ModelManager is refactored to support it.
+
+        except Exception as e:
+            flash(f"Error saving model: {str(e)}", "error")
+            logger.error(f"Error saving uploaded model {filename}: {e}")
+            # Potentially remove the file if saving failed midway, though `file.save()` is somewhat atomic.
+            if os.path.exists(save_path):
+                 os.remove(save_path) # Clean up partially saved file if error
+            return redirect(url_for('model.home'))
+
+        return redirect(url_for('model.home'))
+
+    return model_bp

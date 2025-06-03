@@ -36,6 +36,14 @@
     </tbody>
   </table> 
 
+  <div style="margin-top: 2rem;">
+    <h3>Upload a new model</h3>
+    <form method="POST" action="{{ url_for('upload_model') }}" enctype="multipart/form-data">
+      <input type="file" name="model_file" required>
+      <button type="submit">Upload Model</button>
+    </form>
+  </div>
+
   <form id="deleteForm" method="POST" style="display: none;">
     <input type="hidden" name="skillId" id="deleteSkillId">
   </form>
@@ -57,6 +65,14 @@
   <p style="margin-top: 2rem; font-size: 1.1rem; color: #c0c8d6;">
     🐬 You haven't added any models yet. <a href="{{ url_for('model.createModel') }}" class="link">Add one now</a>.
   </p>
+
+  <div style="margin-top: 2rem;">
+    <h3>Upload a new model</h3>
+    <form method="POST" action="{{ url_for('upload_model') }}" enctype="multipart/form-data">
+      <input type="file" name="model_file" required>
+      <button type="submit">Upload Model</button>
+    </form>
+  </div>
 {% endif %}
 
 {% endblock %}
