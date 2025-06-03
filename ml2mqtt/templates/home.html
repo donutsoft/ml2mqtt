@@ -27,6 +27,7 @@
         <td style="text-align: center;">
           <div class="flex flex-center gap-2">
             <a href="{{ url_for('model.editModel', modelName=model.name, section='settings') }}" class="link">Edit</a>
+            <a href="{{ url_for('download_model_db', model_slug=model.name) }}" class="link">Download DB</a>
             <a href="#" onclick="confirmDelete('{{ model.name }}', '{{ url_for('model.deleteModel', modelName=model.name) }}')" style="color: #ff4d4d; text-decoration: none;">Delete</a>
           </div>
         </td>

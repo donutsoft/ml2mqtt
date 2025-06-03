@@ -1,10 +1,11 @@
 from Config import Config
 from MqttClient import MqttClient
-from flask import Flask
+from flask import Flask, send_file, abort
 from ModelManager import ModelManager
 from io import StringIO
 import logging
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 from routes.model_routes import init_model_routes
 from routes.log_routes import init_log_routes
@@ -77,3 +78,22 @@ modelManager = ModelManager(mqttClient, config.getDataPath() + "/models")
 # Register blueprints
 app.register_blueprint(init_model_routes(modelManager))
 app.register_blueprint(init_log_routes(logStream))
+
+@app.route('/download_model_db/<model_slug>')
+def download_model_db(model_slug: str):
+    data_path = config.getDataPath()
+    # Ensure model_slug is safe to use as a file name component (basic check)
+    if not model_slug or ".." in model_slug or "/" in model_slug:
+        abort(400, description="Invalid model slug.")
+
+    db_file_name = model_slug + ".db"
+    db_file_path = Path(data_path) / "models" / db_file_name
+
+    if not db_file_path.is_file():
+        abort(404, description="Database file not found.")
+
+    return send_file(
+        db_file_path,
+        as_attachment=True,
+        download_name=db_file_name
+    )
