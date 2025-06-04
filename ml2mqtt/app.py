@@ -19,7 +19,7 @@ streamHandler.setLevel(logging.INFO)
 class ExcludeEndpointFilter(logging.Filter):
     def filter(self, record):
         # Exclude logs that contain specific endpoint
-        excludedEndpoints = ['/logs/raw', '/syles/', '/images/']
+        excludedEndpoints = ['/logs/raw', '/styles/', '/images/']
         for endpoint in excludedEndpoints:
             if endpoint in record.getMessage():
                 return False
